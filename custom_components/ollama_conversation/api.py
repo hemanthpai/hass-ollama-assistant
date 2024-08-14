@@ -53,6 +53,14 @@ class OllamaApiClient:
             headers={"Content-type": "application/json; charset=UTF-8"},
         )
 
+    async def async_chat(self, data: dict | None = None,) -> any:
+        """Chat with the API."""
+        return await self._api_wrapper(
+            method="post",
+            url=f"{self._base_url}/api/chat",
+            data=data,
+            headers={"Content-type": "application/json; charset=UTF-8"},
+        )
 
     async def _api_wrapper(
         self,
@@ -86,6 +94,7 @@ class OllamaApiClient:
         except asyncio.TimeoutError as e:
             raise ApiTimeoutError("timeout while talking to the server") from e
         except (aiohttp.ClientError, socket.gaierror) as e:
-            raise ApiCommError("unknown error while talking to the server") from e
+            raise ApiCommError(
+                "unknown error while talking to the server") from e
         except Exception as e:  # pylint: disable=broad-except
             raise ApiClientError("something really went wrong!") from e

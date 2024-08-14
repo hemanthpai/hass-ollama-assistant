@@ -5,8 +5,10 @@ https://github.com/ej52/hass-ollama-conversation
 """
 from __future__ import annotations
 
+import json
 from typing import Literal
 
+from .tools.tools import tools
 from homeassistant.components import conversation
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import MATCH_ALL
@@ -56,7 +58,13 @@ from .exceptions import (
 )
 from .helpers import get_exposed_entities
 
+from .tools.hass_turn_on import (
+    hass_turn_on
+)
+
 # https://developers.home-assistant.io/docs/config_entries_index/#setting-up-an-entry
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Ollama conversation using UI."""
     hass.data.setdefault(DOMAIN, {})
@@ -117,7 +125,8 @@ class OllamaAgent(conversation.AbstractConversationAgent):
         self, user_input: conversation.ConversationInput
     ) -> conversation.ConversationResult:
         """Process a sentence."""
-        raw_system_prompt = self.entry.options.get(CONF_PROMPT_SYSTEM, DEFAULT_PROMPT_SYSTEM)
+        raw_system_prompt = self.entry.options.get(
+            CONF_PROMPT_SYSTEM, DEFAULT_PROMPT_SYSTEM)
         exposed_entities = get_exposed_entities(self.hass)
 
         if user_input.conversation_id in self.history:
@@ -126,10 +135,12 @@ class OllamaAgent(conversation.AbstractConversationAgent):
         else:
             conversation_id = ulid.ulid()
             try:
-                system_prompt = self._async_generate_prompt(raw_system_prompt, exposed_entities)
+                system_prompt = self._async_generate_prompt(
+                    raw_system_prompt, exposed_entities)
             except TemplateError as err:
                 LOGGER.error("Error rendering system prompt: %s", err)
-                intent_response = intent.IntentResponse(language=user_input.language)
+                intent_response = intent.IntentResponse(
+                    language=user_input.language)
                 intent_response.async_set_error(
                     intent.IntentResponseErrorCode.UNKNOWN,
                     "I had a problem with my system prompt, please check the logs for more information.",
@@ -137,12 +148,17 @@ class OllamaAgent(conversation.AbstractConversationAgent):
                 return conversation.ConversationResult(
                     response=intent_response, conversation_id=conversation_id
                 )
-            messages = {
-                "system": system_prompt,
-                "context": None,
-            }
+            messages = [
+                {
+                    "role": "system",
+                    "content": system_prompt,
+                }
+            ]
 
-        messages["prompt"] = user_input.text
+        messages.append({
+            "role": "user",
+            "content": user_input.text,
+        })
 
         try:
             response = await self.query(messages)
@@ -152,7 +168,8 @@ class OllamaAgent(conversation.AbstractConversationAgent):
             ApiTimeoutError
         ) as err:
             LOGGER.error("Error generating prompt: %s", err)
-            intent_response = intent.IntentResponse(language=user_input.language)
+            intent_response = intent.IntentResponse(
+                language=user_input.language)
             intent_response.async_set_error(
                 intent.IntentResponseErrorCode.UNKNOWN,
                 f"Something went wrong, {err}",
@@ -162,7 +179,8 @@ class OllamaAgent(conversation.AbstractConversationAgent):
             )
         except HomeAssistantError as err:
             LOGGER.error("Something went wrong: %s", err)
-            intent_response = intent.IntentResponse(language=user_input.language)
+            intent_response = intent.IntentResponse(
+                language=user_input.language)
             intent_response.async_set_error(
                 intent.IntentResponseErrorCode.UNKNOWN,
                 "Something went wrong, please check the logs for more information.",
@@ -171,11 +189,57 @@ class OllamaAgent(conversation.AbstractConversationAgent):
                 response=intent_response, conversation_id=conversation_id
             )
 
-        messages["context"] = response["context"]
+        assistant_response = ""
+        # TODO: Error handling
+        if response.get("done_reason", "") == "stop":
+            assistant_message = response.get("message", {})
+            if "tool_calls" in assistant_message:
+                for tool_call in assistant_message.get("tool_calls", []):
+                    tool = tool_call.get("function", {})
+                    tool_name = tool.get("name", "")
+                    tool_args = tool.get("arguments", {})
+                    messages.append(
+                        {
+                            "role": "assistant",
+                            "tool_calls": [tool_call],
+                        }
+                    )
+                    # Ensure tool_args is a dictionary
+                    if isinstance(tool_args, str):
+                        tool_args = json.loads(tool_args)
+
+                    # Check if the tool_name is in any of the modules
+                    if tool_name in globals():
+                        tool_function = globals()[tool_name]
+                    else:
+                        tool_function = None
+
+                    if tool_function is not None:
+                        result = await tool_function(self.hass, **tool_args)
+                        messages.append(
+                            {"role": "tool", "name": f"{tool_name}", "content": f"{result}"})
+                        assistant_response = result
+                    else:
+                        messages.append(
+                            {"role": "tool", "name": f"{tool_name}", "content": "Tool not found"})
+                        assistant_response = "Tool not found"
+            else:
+                assistant_response = assistant_message.get("content", "")
+        else:
+            # TODO: Handle tool call
+            pass
+
+        LOGGER.debug("Assistant response: %s", assistant_response)
+
+        messages.append({
+            "role": "assistant",
+            "content": assistant_response,
+        })
+
         self.history[conversation_id] = messages
 
         intent_response = intent.IntentResponse(language=user_input.language)
-        intent_response.async_set_speech(response["response"])
+        intent_response.async_set_speech(assistant_response)
         return conversation.ConversationResult(
             response=intent_response, conversation_id=conversation_id
         )
@@ -197,13 +261,12 @@ class OllamaAgent(conversation.AbstractConversationAgent):
         """Process a sentence."""
         model = self.entry.options.get(CONF_MODEL, DEFAULT_MODEL)
 
-        LOGGER.debug("Prompt for %s: %s", model, messages["prompt"])
+        LOGGER.debug("Prompt for %s: %s", model, messages)
 
-        result = await self.client.async_generate({
+        result = await self.client.async_chat({
             "model": model,
-            "context": messages["context"],
-            "system": messages["system"],
-            "prompt": messages["prompt"],
+            "messages": messages,
+            "tools": tools,
             "stream": False,
             "options": {
                 "mirostat": int(self.entry.options.get(CONF_MIROSTAT_MODE, DEFAULT_MIROSTAT_MODE)),
@@ -218,6 +281,5 @@ class OllamaAgent(conversation.AbstractConversationAgent):
             }
         })
 
-        response: str = result["response"]
-        LOGGER.debug("Response %s", response)
+        LOGGER.debug("Result %s", result)
         return result

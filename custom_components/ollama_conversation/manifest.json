@@ -1,16 +1,16 @@
 {
-  "domain": "ollama_conversation",
-  "name": "Ollama Conversation",
+  "domain": "ollama_assistant",
+  "name": "Ollama Assistant",
   "codeowners": [
-    "@ej52"
+    "@hemanthpai"
   ],
   "config_flow": true,
   "dependencies": [
     "conversation"
   ],
-  "documentation": "https://github.com/ej52/hass-ollama-conversation#options",
+  "documentation": "https://github.com/hemanthpai/hass-ollama-assistant#options",
   "integration_type": "service",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/ej52/hass-ollama-conversation/issues",
+  "issue_tracker": "https://github.com/hemanthpai/hass-ollama-assistant/issues",
   "version": "0.0.0"
 }
