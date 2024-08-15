@@ -1,7 +1,7 @@
-[![GitHub Release](https://img.shields.io/github/release/ej52/hass-ollama-conversation.svg?style=flat-square)](https://github.com/hemanthpai/hass-ollama-assistant/releases)
-[![Downloads](https://img.shields.io/github/downloads/ej52/hass-ollama-conversation/total?style=flat-square)](https://github.com/hemanthpai/hass-ollama-assistant/releases)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/ej52/hass-ollama-conversation/validate.yml?style=flat-square)](https://github.com/hemanthpai/hass-ollama-assistant/actions/workflows/validate.yaml)
-[![License](https://img.shields.io/github/license/ej52/hass-ollama-conversation.svg?style=flat-square)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/release/hemanthpai/hass-ollama-assistant.svg?style=flat-square)](https://github.com/hemanthpai/hass-ollama-assistant/releases)
+[![Downloads](https://img.shields.io/github/downloads/hemanthpai/hass-ollama-assistant/total?style=flat-square)](https://github.com/hemanthpai/hass-ollama-assistant/releases)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/hemanthpai/hass-ollama-assistant/validate.yml?style=flat-square)](https://github.com/hemanthpai/hass-ollama-assistant/actions/workflows/validate.yaml)
+[![License](https://img.shields.io/github/license/hemanthpai/hass-ollama-assistant.svg?style=flat-square)](LICENSE)
 [![hacs](https://img.shields.io/badge/HACS-default-orange.svg?style=flat-square)](https://hacs.xyz)
 
 # THIS IS A WORK IN PROGRESS AND NOT READY FOR GENERAL USE. THIS NOTICE WILL BE REMOVED AND THE README UPDATED WHEN IT IS READY.
