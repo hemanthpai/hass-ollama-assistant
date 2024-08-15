@@ -1,10 +1,10 @@
-"""Constants for ollama_conversation."""
+"""Constants for ollama_assistant."""
 from logging import Logger, getLogger
 
 LOGGER: Logger = getLogger(__package__)
 
-NAME = "Ollama Conversation"
-DOMAIN = "ollama_conversation"
+NAME = "Ollama Assistant"
+DOMAIN = "ollama_assistant"
 
 MENU_OPTIONS = ["general_config", "model_config", "prompt_system"]
 
