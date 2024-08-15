@@ -85,6 +85,7 @@ DEFAULT_OPTIONS = types.MappingProxyType(
     }
 )
 
+
 class OllamaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Ollama Conversation."""
 
@@ -198,7 +199,8 @@ class OllamaOptionsFlow(config_entries.OptionsFlow):
         try:
             client = OllamaApiClient(
                 base_url=cv.url_no_path(self.config_entry.data[CONF_BASE_URL]),
-                timeout=self.config_entry.options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT),
+                timeout=self.config_entry.options.get(
+                    CONF_TIMEOUT, DEFAULT_TIMEOUT),
                 session=async_create_clientsession(self.hass),
             )
             response = await client.async_get_models()
@@ -207,11 +209,13 @@ class OllamaOptionsFlow(config_entries.OptionsFlow):
             LOGGER.exception("Unexpected exception: %s", exception)
             models = []
 
-        schema = ollama_schema_model_config(self.config_entry.options, [model["name"] for model in models])
+        schema = ollama_schema_model_config(self.config_entry.options, [
+                                            model["name"] for model in models])
         return self.async_show_form(
             step_id="model_config",
             data_schema=vol.Schema(schema)
         )
+
 
 def ollama_schema_general_config(options: MappingProxyType[str, Any]) -> dict:
     """Return a schema for general config."""
@@ -220,10 +224,12 @@ def ollama_schema_general_config(options: MappingProxyType[str, Any]) -> dict:
     return {
         vol.Optional(
             CONF_TIMEOUT,
-            description={"suggested_value": options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)},
+            description={"suggested_value": options.get(
+                CONF_TIMEOUT, DEFAULT_TIMEOUT)},
             default=DEFAULT_TIMEOUT,
         ): int,
     }
+
 
 def ollama_schema_prompt_system(options: MappingProxyType[str, Any]) -> dict:
     """Return a schema for system prompt."""
@@ -232,12 +238,14 @@ def ollama_schema_prompt_system(options: MappingProxyType[str, Any]) -> dict:
     return {
         vol.Optional(
             CONF_PROMPT_SYSTEM,
-            description={"suggested_value": options.get(CONF_PROMPT_SYSTEM, DEFAULT_PROMPT_SYSTEM)},
+            description={"suggested_value": options.get(
+                CONF_PROMPT_SYSTEM, DEFAULT_PROMPT_SYSTEM)},
             default=DEFAULT_PROMPT_SYSTEM,
         ): TemplateSelector()
     }
 
-def ollama_schema_model_config(options: MappingProxyType[str, Any], MODELS: []) -> dict:
+
+def ollama_schema_model_config(options: MappingProxyType[str, Any], MODELS: list[str]) -> dict:
     """Return a schema for model config."""
     if not options:
         options = DEFAULT_OPTIONS
@@ -259,12 +267,14 @@ def ollama_schema_model_config(options: MappingProxyType[str, Any], MODELS: []) 
         ),
         vol.Optional(
             CONF_CTX_SIZE,
-            description={"suggested_value": options.get(CONF_CTX_SIZE, DEFAULT_CTX_SIZE)},
+            description={"suggested_value": options.get(
+                CONF_CTX_SIZE, DEFAULT_CTX_SIZE)},
             default=DEFAULT_CTX_SIZE,
         ): int,
         vol.Optional(
             CONF_MAX_TOKENS,
-            description={"suggested_value": options.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS)},
+            description={"suggested_value": options.get(
+                CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS)},
             default=DEFAULT_MAX_TOKENS,
         ): int,
         vol.Required(
@@ -278,7 +288,8 @@ def ollama_schema_model_config(options: MappingProxyType[str, Any], MODELS: []) 
                 options=[
                     SelectOptionDict(value="0", label="Disabled"),
                     SelectOptionDict(value="1", label="Mirostat (Enabled)"),
-                    SelectOptionDict(value="2", label="Mirostat 2.0 (Enabled)"),
+                    SelectOptionDict(
+                        value="2", label="Mirostat 2.0 (Enabled)"),
                 ],
                 mode=SelectSelectorMode.DROPDOWN,
                 custom_value=False,
@@ -288,32 +299,38 @@ def ollama_schema_model_config(options: MappingProxyType[str, Any], MODELS: []) 
         ),
         vol.Optional(
             CONF_MIROSTAT_ETA,
-            description={"suggested_value": options.get(CONF_MIROSTAT_ETA, DEFAULT_MIROSTAT_ETA)},
+            description={"suggested_value": options.get(
+                CONF_MIROSTAT_ETA, DEFAULT_MIROSTAT_ETA)},
             default=DEFAULT_MIROSTAT_ETA,
         ): NumberSelector(NumberSelectorConfig(min=0, max=1, step=0.05)),
         vol.Optional(
             CONF_MIROSTAT_TAU,
-            description={"suggested_value": options.get(CONF_MIROSTAT_TAU, DEFAULT_MIROSTAT_TAU)},
+            description={"suggested_value": options.get(
+                CONF_MIROSTAT_TAU, DEFAULT_MIROSTAT_TAU)},
             default=DEFAULT_MIROSTAT_TAU,
         ): NumberSelector(NumberSelectorConfig(min=0, max=10, step=0.5)),
         vol.Optional(
             CONF_TEMPERATURE,
-            description={"suggested_value": options.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE)},
+            description={"suggested_value": options.get(
+                CONF_TEMPERATURE, DEFAULT_TEMPERATURE)},
             default=DEFAULT_TEMPERATURE,
         ): NumberSelector(NumberSelectorConfig(min=0, max=1, step=0.05)),
         vol.Optional(
             CONF_REPEAT_PENALTY,
-            description={"suggested_value": options.get(CONF_REPEAT_PENALTY, DEFAULT_REPEAT_PENALTY)},
+            description={"suggested_value": options.get(
+                CONF_REPEAT_PENALTY, DEFAULT_REPEAT_PENALTY)},
             default=DEFAULT_REPEAT_PENALTY,
         ): NumberSelector(NumberSelectorConfig(min=0, max=2, step=0.05)),
         vol.Optional(
             CONF_TOP_K,
-            description={"suggested_value": options.get(CONF_TOP_K, DEFAULT_TOP_K)},
+            description={"suggested_value": options.get(
+                CONF_TOP_K, DEFAULT_TOP_K)},
             default=DEFAULT_TOP_K,
         ): NumberSelector(NumberSelectorConfig(min=0, max=100, step=1)),
         vol.Optional(
             CONF_TOP_P,
-            description={"suggested_value": options.get(CONF_TOP_P, DEFAULT_TOP_P)},
+            description={"suggested_value": options.get(
+                CONF_TOP_P, DEFAULT_TOP_P)},
             default=DEFAULT_TOP_P,
         ): NumberSelector(NumberSelectorConfig(min=0, max=1, step=0.05)),
     }

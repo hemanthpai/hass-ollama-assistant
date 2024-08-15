@@ -59,7 +59,7 @@ from .exceptions import (
 from .helpers import get_exposed_entities
 
 from .tools.hass_turn_on import (
-    hass_turn_on
+    hass_turn_on  # noqa: F401
 )
 
 # https://developers.home-assistant.io/docs/config_entries_index/#setting-up-an-entry
@@ -209,10 +209,7 @@ class OllamaAgent(conversation.AbstractConversationAgent):
                         tool_args = json.loads(tool_args)
 
                     # Check if the tool_name is in any of the modules
-                    if tool_name in globals():
-                        tool_function = globals()[tool_name]
-                    else:
-                        tool_function = None
+                    tool_function = globals().get(tool_name, None)
 
                     if tool_function is not None:
                         result = await tool_function(self.hass, **tool_args)

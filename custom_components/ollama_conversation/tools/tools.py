@@ -1,5 +1,10 @@
-from .hass_turn_on import hass_turn_on
-from ..utils.utils import get_json_schema
+"""Define tools for interacting with Home Assistant.
+
+This module includes definitions for various tools used in the project, such as functions to interact with Home Assistant entities.
+
+Tools:
+    - hass_turn_on: Turn on the entities specified in the 'entity_ids' parameter.
+"""
 
 tools = [
     {
