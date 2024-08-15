@@ -25,5 +25,24 @@ tools = [
                 "required": ["entity_ids"],
             },
         },
-    }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "hass_turn_off",
+            "description": "Turn off the entities specified in the 'entity_ids' parameter",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "entity_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "minItems": 1,
+                        "description": "A list containing of one or more entity IDs of devices or entities that need to be turned off.",
+                    }
+                },
+                "required": ["entity_ids"],
+            },
+        },
+    },
 ]

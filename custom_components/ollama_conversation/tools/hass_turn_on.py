@@ -33,3 +33,28 @@ async def hass_turn_on(hass: HomeAssistant, entity_ids: list[str]):
             return f"Error while turning on entity {entity_id}"
 
     return "Turned on the specified entities."
+
+
+async def hass_turn_off(hass: HomeAssistant, entity_ids: list[str]):
+    """Turn off specified entities in Home Assistant.
+
+    Args:
+        entity_ids: A list containing of one or more entity IDs of devices or entities that need to be turned off.
+        hass: The Home Assistant instance.
+
+    """
+    for entity_id in entity_ids:
+        domain = entity_id.split(".")[0]
+
+        try:
+            await hass.services.async_call(
+                domain,
+                "turn_off",
+                {ATTR_ENTITY_ID: entity_id},
+                blocking=True,
+            )
+        except Exception as e:
+            LOGGER.error(f"Error while turning off entity {entity_id}: {e}")
+            return f"Error while turning off entity {entity_id}"
+
+    return "Turned off the specified entities."
