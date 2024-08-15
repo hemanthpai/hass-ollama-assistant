@@ -16,7 +16,7 @@ This assistant agent is able to control your house. The Ollama Assistant agent c
 
 To install the __Ollama Assistant__ integration to your Home Assistant instance, use this My button:
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=ej52&repository=hass-ollama-conversation&category=integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=hemanthpai&repository=hass-ollama-assistant&category=integration)
 
 #### Manual Insallation
 If the above My button doesn’t work, you can also perform the following steps manually:
