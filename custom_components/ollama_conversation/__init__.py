@@ -59,7 +59,8 @@ from .exceptions import (
 from .helpers import get_exposed_entities
 
 from .tools.hass_turn_on import (
-    hass_turn_on  # noqa: F401
+    hass_turn_on,  # noqa: F401
+    hass_turn_off,  # noqa: F401
 )
 
 # https://developers.home-assistant.io/docs/config_entries_index/#setting-up-an-entry
