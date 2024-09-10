@@ -34,7 +34,7 @@ class VllmApiClient:
         response: str = await self._api_wrapper(
             method="get", url=f"{self._base_url}/v1/models", decode_json=False
         )
-        return response.strip() == "VLLM is running"
+        return 'data' in response
 
     async def async_get_models(self) -> any:
         """Get models from the API."""
