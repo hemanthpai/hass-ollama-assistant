@@ -106,7 +106,7 @@ class OllamaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 timeout=user_input[CONF_TIMEOUT],
                 api_key="homeassistant",
             )
-            response = await self.client.models.list()
+            response = self.client.models.list()
             if not response:
                 raise vol.Invalid("Invalid Open AI API server")
         except vol.Invalid:
@@ -194,7 +194,7 @@ class OllamaOptionsFlow(config_entries.OptionsFlow):
                 timeout=user_input[CONF_TIMEOUT],
                 api_key="homeassistant",
             )
-            response = await self.client.models.list()
+            response = self.client.models.list()
             for model in response:
                 models.append(model.id)
         except Exception as exception:
