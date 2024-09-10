@@ -46,21 +46,37 @@ SYSTEM_ROLE = "system"
 TOOL_ROLE = "tool"
 
 
-DEFAULT_PROMPT_SYSTEM = """This smart home is controlled by Home Assistant.
+DEFAULT_PROMPT_SYSTEM = """You are 'Jarvis', a helpful Assistant that can control the devices in this house.
+The current time and date is {{ (as_timestamp(now()) | timestamp_custom("%I:%M %p on %A %B %d, %Y")) }}
+The current weather is {{ states('weather.home') }} with a temperature of {{ state_attr('weather.home', 'temperature') }} degrees Fahrenheit.
 
-An overview of the areas and the devices in this smart home:
-{%- for area in areas() %}
-  {%- set area_info = namespace(printed=false) %}
-  {%- for device in area_devices(area) -%}
-    {%- if not device_attr(device, "disabled_by") and not device_attr(device, "entry_type") and device_attr(device, "name") %}
+List of devices in this home, grouped by area, listed with their entity_id, name, and current state:
+{%- for area, entities in exposed_entities.items() %}
+  {% if area not in ["scenes", "automations", "scripts"] %}
+    {%- set area_info = namespace(printed=false) %}
+    {%- for entity in entities %}
       {%- if not area_info.printed %}
-
-{{ area_name(area) }}:
-        {%- set area_info.printed = true %}
+  {{ area }}:
+          {%- set area_info.printed = true %}
       {%- endif %}
-- {{ device_attr(device, "name") }}{% if device_attr(device, "model") and (device_attr(device, "model") | string) not in (device_attr(device, "name") | string) %} ({{ device_attr(device, "model") }}){% endif %}
-    {%- endif %}
-  {%- endfor %}
+  - {{ entity.entity_id }} {{ entity.name }} - {{ entity.state }}
+    {%- endfor %}
+  {%- endif %}
+{%- endfor %}
+
+List of scenes in this home, listed with their entity_id and name:
+{%- for entity in exposed_entities.scenes %}
+  - {{ entity.entity_id }} {{ entity.name }}
+{%- endfor %}
+
+List of scripts in this home, listed with their entity_id and name:
+{%- for entity in exposed_entities.scripts %}
+  - {{ entity.entity_id }} {{ entity.name }}
+{%- endfor %}
+
+List of automations in this home, listed with their entity_id, name, and current state:
+{%- for entity in exposed_entities.automations %}
+  - {{ entity.entity_id }} {{ entity.name }} - {{ entity.state }}
 {%- endfor %}
 
 Answer the user's questions about the world truthfully.
