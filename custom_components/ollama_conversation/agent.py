@@ -1,5 +1,6 @@
 """This module provides the OpenAIAgent class for handling conversations with OpenAI."""
 
+import asyncio
 from typing import Literal
 
 from homeassistant.components import conversation
@@ -91,10 +92,11 @@ class OpenAIAgent(conversation.AbstractConversationAgent):
             parse_result=False,
         )
 
-    def _async_create_assistant(self, client: OpenAI):
+    async def _async_create_assistant(self, client: OpenAI):
         """Create an assistant."""
 
         model = self.entry.options.get(CONF_MODEL, DEFAULT_MODEL)
+        loop = asyncio.get_running_loop()
 
         try:
             system_prompt = self._async_generate_prompt()
@@ -102,6 +104,12 @@ class OpenAIAgent(conversation.AbstractConversationAgent):
             LOGGER.error("Error rendering system prompt: %s", exception)
             raise HomeAssistantError("Error rendering system prompt") from exception
 
+        assistant = await loop.run_in_executor(None, self._create_assistant, client, model, system_prompt)
+
+        return assistant
+
+    def _create_assistant(self, client: OpenAI, model: str, system_prompt: str):
+        """Create an assistant."""
         return client.beta.assistants.create(
             name="Home Assistant",
             instructions=system_prompt,
