@@ -10,9 +10,9 @@ from homeassistant.helpers.update_coordinator import (
     UpdateFailed,
 )
 
-from .api import OllamaApiClient
 from .const import DOMAIN, LOGGER
 from .exceptions import ApiClientError
+from .vllm_api import VllmApiClient
 
 
 # https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
@@ -24,7 +24,7 @@ class OllamaDataUpdateCoordinator(DataUpdateCoordinator):
     def __init__(
         self,
         hass: HomeAssistant,
-        client: OllamaApiClient,
+        client: VllmApiClient,
     ) -> None:
         """Initialize."""
         self.client = client
