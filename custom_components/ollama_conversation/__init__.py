@@ -13,7 +13,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api import OllamaApiClient
+from .vllm_api import VllmApiClient
 from .const import (
     DOMAIN, CONF_BASE_URL,
     CONF_TIMEOUT,
@@ -31,7 +31,7 @@ from .exceptions import (
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Ollama conversation using UI."""
     hass.data.setdefault(DOMAIN, {})
-    client = OllamaApiClient(
+    client = VllmApiClient(
         base_url=entry.data[CONF_BASE_URL],
         timeout=entry.options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT),
         session=async_get_clientsession(hass),

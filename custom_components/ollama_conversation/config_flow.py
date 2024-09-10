@@ -20,7 +20,8 @@ from homeassistant.helpers.selector import (
     SelectOptionDict
 )
 
-from .api import OllamaApiClient
+from custom_components.ollama_conversation.vllm_api import VllmApiClient
+
 from .const import (
     DOMAIN, LOGGER,
     MENU_OPTIONS,
@@ -107,14 +108,19 @@ class OllamaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         errors = {}
         try:
-            self.client = OllamaApiClient(
+            # self.client = OllamaApiClient(
+            #     base_url=cv.url_no_path(user_input[CONF_BASE_URL]),
+            #     timeout=user_input[CONF_TIMEOUT],
+            #     session=async_create_clientsession(self.hass),
+            # )
+            self.client = VllmApiClient(
                 base_url=cv.url_no_path(user_input[CONF_BASE_URL]),
                 timeout=user_input[CONF_TIMEOUT],
                 session=async_create_clientsession(self.hass),
             )
             response = await self.client.async_get_heartbeat()
             if not response:
-                raise vol.Invalid("Invalid Ollama server")
+                raise vol.Invalid("Invalid vLLM server")
         except vol.Invalid:
             errors["base"] = "invalid_url"
         except ApiTimeoutError:
@@ -197,20 +203,28 @@ class OllamaOptionsFlow(config_entries.OptionsFlow):
             return self.async_create_entry(title="", data=self.options)
 
         try:
-            client = OllamaApiClient(
-                base_url=cv.url_no_path(self.config_entry.data[CONF_BASE_URL]),
-                timeout=self.config_entry.options.get(
-                    CONF_TIMEOUT, DEFAULT_TIMEOUT),
+            # client = OllamaApiClient(
+            #     base_url=cv.url_no_path(self.config_entry.data[CONF_BASE_URL]),
+            #     timeout=self.config_entry.options.get(
+            #         CONF_TIMEOUT, DEFAULT_TIMEOUT),
+            #     session=async_create_clientsession(self.hass),
+            # )
+            client = VllmApiClient(
+                base_url=cv.url_no_path(user_input[CONF_BASE_URL]),
+                timeout=user_input[CONF_TIMEOUT],
                 session=async_create_clientsession(self.hass),
             )
             response = await client.async_get_models()
-            models = response["models"]
+            # models = response["models"]
+            models = response["data"]
         except ApiClientError as exception:
             LOGGER.exception("Unexpected exception: %s", exception)
             models = []
 
+        # schema = ollama_schema_model_config(self.config_entry.options, [
+        #                                     model["name"] for model in models])
         schema = ollama_schema_model_config(self.config_entry.options, [
-                                            model["name"] for model in models])
+                                            model["id"] for model in models])
         return self.async_show_form(
             step_id="model_config",
             data_schema=vol.Schema(schema)
