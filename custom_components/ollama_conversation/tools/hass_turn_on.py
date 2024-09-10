@@ -3,6 +3,9 @@
 Functions:
     hass_turn_on(hass: HomeAssistant, entity_ids: list[str]) -> str:
         Turns on the specified entities.
+
+    hass_turn_off(hass: HomeAssistant, entity_ids: list[str]) -> str:
+        Turns off the specified entities.
 """
 from ..const import LOGGER
 

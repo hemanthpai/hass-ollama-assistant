@@ -35,6 +35,17 @@ DEFAULT_REPEAT_PENALTY = 1.1
 DEFAULT_TOP_K = 40
 DEFAULT_TOP_P = 0.9
 
+ROLE_KEY = "role"
+CONTENT_KEY = "content"
+NAME_KEY = "name"
+TOOL_CALLS_KEY = "tool_calls"
+
+ASSISTANT_ROLE = "assistant"
+USER_ROLE = "user"
+SYSTEM_ROLE = "system"
+TOOL_ROLE = "tool"
+
+
 DEFAULT_PROMPT_SYSTEM = """This smart home is controlled by Home Assistant.
 
 An overview of the areas and the devices in this smart home:
