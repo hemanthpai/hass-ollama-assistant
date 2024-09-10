@@ -210,8 +210,9 @@ class OllamaOptionsFlow(config_entries.OptionsFlow):
             #     session=async_create_clientsession(self.hass),
             # )
             client = VllmApiClient(
-                base_url=cv.url_no_path(user_input[CONF_BASE_URL]),
-                timeout=user_input[CONF_TIMEOUT],
+                base_url=cv.url_no_path(self.config_entry.data[CONF_BASE_URL]),
+                timeout=self.config_entry.options.get(
+                    CONF_TIMEOUT, DEFAULT_TIMEOUT),
                 session=async_create_clientsession(self.hass),
             )
             response = await client.async_get_models()
