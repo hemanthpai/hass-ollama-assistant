@@ -15,6 +15,9 @@ from .exceptions import (
     ApiTimeoutError
 )
 
+from .response import VllmApiResponseDecoder, VllmChatApiResponse, VllmModelsApiResponse
+
+
 class VllmApiClient:
     """API client for VLLM."""
 
@@ -31,33 +34,37 @@ class VllmApiClient:
 
     async def async_get_heartbeat(self) -> bool:
         """Get heartbeat from the API."""
-        response: str = await self._api_wrapper(
-            method="get", url=f"{self._base_url}/v1/models", decode_json=False
-        )
-        return 'data' in response
+        response: VllmModelsApiResponse = await VllmApiResponseDecoder.decode(
+            self._api_wrapper(
+                method="get", url=f"{self._base_url}/v1/models", decode_json=False
+            ))
+        return response.models.count > 0
 
-    async def async_get_models(self) -> any:
+    async def async_get_models(self) -> VllmModelsApiResponse:
         """Get models from the API."""
-        return await self._api_wrapper(
-            method="get",
-            url=f"{self._base_url}/v1/models",
-            headers={
-                "Content-type": "application/json; charset=UTF-8",
-                "Authorization": "Bearer functionary"
-                },
+        response: VllmModelsApiResponse = await VllmApiResponseDecoder.decode(
+            self._api_wrapper(
+                method="get", url=f"{self._base_url}/v1/models",
+                headers={
+                    "Content-type": "application/json; charset=UTF-8",
+                    "Authorization": "Bearer functionary"
+                },))
+        return response
+
+    async def async_chat(self, data: dict | None = None,) -> VllmChatApiResponse:
+        """Chat with the API."""
+        response: VllmChatApiResponse = await VllmApiResponseDecoder.decode(
+            self._api_wrapper(
+                method="post",
+                url=f"{self._base_url}/v1/chat/completions",
+                data=data,
+                headers={
+                    "Content-type": "application/json; charset=UTF-8",
+                    "Authorization": "Bearer functionary"
+                },)
         )
 
-    async def async_chat(self, data: dict | None = None,) -> any:
-        """Chat with the API."""
-        return await self._api_wrapper(
-            method="post",
-            url=f"{self._base_url}/v1/chat/completions",
-            data=data,
-            headers={
-                "Content-type": "application/json; charset=UTF-8",
-                "Authorization": "Bearer functionary"
-                },
-        )
+        return response
 
     async def _api_wrapper(
         self,
@@ -95,4 +102,3 @@ class VllmApiClient:
                 "unknown error while talking to the server") from e
         except Exception as e:  # pylint: disable=broad-except
             raise ApiClientError("something really went wrong!") from e
-

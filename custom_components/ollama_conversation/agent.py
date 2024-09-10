@@ -18,7 +18,6 @@ from homeassistant.util import ulid
 from .vllm_api import VllmApiClient
 
 from .const import (
-    CONTENT_KEY,
     LOGGER,
 
     CONF_MODEL,
@@ -39,6 +38,7 @@ from .exceptions import (
     ApiTimeoutError
 )
 from .helpers import assistant_message, assistant_tool_call_message, get_exposed_entities, system_message, tool_message, user_message
+
 
 class OllamaAgent(conversation.AbstractConversationAgent):
     """Ollama conversation agent."""
@@ -77,16 +77,14 @@ class OllamaAgent(conversation.AbstractConversationAgent):
 
         try:
             response = await self.query(messages)
-        except ( ApiCommError, ApiJsonError, ApiTimeoutError ) as err:
+        except (ApiCommError, ApiJsonError, ApiTimeoutError) as err:
             return self._handle_api_error(err, user_input.language, conversation_id)
         except HomeAssistantError as err:
             return self._handle_homeassistant_error(err, user_input.language, conversation_id)
 
         # TODO: Error handling
-        assistant_response_message = response.get("message", {})
-
-        if "tool_calls" in assistant_response_message:
-            for tool_call in assistant_response_message.get("tool_calls", []):
+        if response.tool_calls.count > 0:
+            for tool_call in response.tool_calls:
                 messages.append(
                     assistant_tool_call_message(tool_call)
                 )
@@ -96,10 +94,8 @@ class OllamaAgent(conversation.AbstractConversationAgent):
                 messages.append(tool_call_response)
 
                 assistant_response = tool_call_response.get("content", "")
-
-            # TODO: Let the AI model know that the tool call has been handled
         else:
-            assistant_response = assistant_response_message.get(CONTENT_KEY, "")
+            assistant_response = response.message
 
         LOGGER.debug("Assistant response: %s", assistant_response)
 
@@ -212,7 +208,7 @@ class OllamaAgent(conversation.AbstractConversationAgent):
             response=intent_response, conversation_id=conversation_id
         )
 
-    def _handle_api_error(self, err: Exception, language:str, conversation_id: str) -> conversation.ConversationResult:
+    def _handle_api_error(self, err: Exception, language: str, conversation_id: str) -> conversation.ConversationResult:
         """Handle API errors."""
         LOGGER.error("API error: %s", err)
         intent_response = intent.IntentResponse(language=language)
@@ -224,7 +220,7 @@ class OllamaAgent(conversation.AbstractConversationAgent):
             response=intent_response, conversation_id=conversation_id
         )
 
-    def _handle_homeassistant_error(self, err: Exception, language:str, conversation_id: str) -> conversation.ConversationResult:
+    def _handle_homeassistant_error(self, err: Exception, language: str, conversation_id: str) -> conversation.ConversationResult:
         """Handle Home Assistant errors."""
         LOGGER.error("Home Assistant error: %s", err)
         intent_response = intent.IntentResponse(language=language)

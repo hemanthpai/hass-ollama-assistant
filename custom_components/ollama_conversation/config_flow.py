@@ -21,6 +21,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .vllm_api import VllmApiClient
+from .response import VllmModelsApiResponse
 
 from .const import (
     DOMAIN, LOGGER,
@@ -217,15 +218,14 @@ class OllamaOptionsFlow(config_entries.OptionsFlow):
             )
             response = await client.async_get_models()
             # models = response["models"]
-            models = response["data"]
         except ApiClientError as exception:
             LOGGER.exception("Unexpected exception: %s", exception)
-            models = []
+            response = VllmModelsApiResponse([])
 
         # schema = ollama_schema_model_config(self.config_entry.options, [
         #                                     model["name"] for model in models])
         schema = ollama_schema_model_config(self.config_entry.options, [
-                                            model["id"] for model in models])
+                                            model.model_id for model in response.models])
         return self.async_show_form(
             step_id="model_config",
             data_schema=vol.Schema(schema)
