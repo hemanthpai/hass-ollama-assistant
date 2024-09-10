@@ -4,6 +4,7 @@ This module includes definitions for various tools used in the project, such as 
 
 Tools:
     - hass_turn_on: Turn on the entities specified in the 'entity_ids' parameter.
+    - hass_turn_off: Turn off the entities specified in the 'entity_ids' parameter.
 """
 
 tools = [
