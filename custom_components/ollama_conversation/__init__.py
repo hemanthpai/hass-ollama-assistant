@@ -28,6 +28,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     client = OpenAI(
         base_url=entry.data[CONF_BASE_URL],
         timeout=entry.options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT),
+        api_key="homeassistant", #required but not used
     )
 
     hass.data[DOMAIN][entry.entry_id] = coordinator = OllamaDataUpdateCoordinator(
