@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 from typing import Literal
 
-from .tools.tools import tools
+from .tools import tools
 from homeassistant.components import conversation
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import MATCH_ALL

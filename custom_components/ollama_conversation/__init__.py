@@ -23,6 +23,7 @@ from .coordinator import OllamaDataUpdateCoordinator
 from .exceptions import (
     ApiClientError
 )
+from .hass_provider import HassContext
 
 
 # https://developers.home-assistant.io/docs/config_entries_index/#setting-up-an-entry
@@ -30,6 +31,7 @@ from .exceptions import (
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Ollama conversation using UI."""
+    HassContext(hass)
     hass.data.setdefault(DOMAIN, {})
     client = VllmApiClient(
         base_url=entry.data[CONF_BASE_URL],
@@ -67,6 +69,3 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload Ollama conversation."""
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)
-
-
-
