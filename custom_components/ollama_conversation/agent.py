@@ -89,9 +89,9 @@ class OllamaAgent(conversation.AbstractConversationAgent):
         try:
             response = await self.query(messages)
         except ( ApiCommError, ApiJsonError, ApiTimeoutError ) as err:
-            return self._handle_api_error(err, conversation_id)
+            return self._handle_api_error(err, user_input.language, conversation_id)
         except HomeAssistantError as err:
-            return self._handle_homeassistant_error(err, conversation_id)
+            return self._handle_homeassistant_error(err, user_input.language, conversation_id)
 
         assistant_response = ""
         # TODO: Error handling
@@ -217,10 +217,10 @@ class OllamaAgent(conversation.AbstractConversationAgent):
             response=intent_response, conversation_id=conversation_id
         )
 
-    def _handle_api_error(self, err: Exception, conversation_id: str) -> conversation.ConversationResult:
+    def _handle_api_error(self, err: Exception, language:str, conversation_id: str) -> conversation.ConversationResult:
         """Handle API errors."""
         LOGGER.error("API error: %s", err)
-        intent_response = intent.IntentResponse()
+        intent_response = intent.IntentResponse(language=language)
         intent_response.async_set_error(
             intent.IntentResponseErrorCode.UNKNOWN,
             "There was an error communicating with the API.",
@@ -229,10 +229,10 @@ class OllamaAgent(conversation.AbstractConversationAgent):
             response=intent_response, conversation_id=conversation_id
         )
 
-    def _handle_homeassistant_error(self, err: Exception, conversation_id: str) -> conversation.ConversationResult:
+    def _handle_homeassistant_error(self, err: Exception, language:str, conversation_id: str) -> conversation.ConversationResult:
         """Handle Home Assistant errors."""
         LOGGER.error("Home Assistant error: %s", err)
-        intent_response = intent.IntentResponse()
+        intent_response = intent.IntentResponse(language=language)
         intent_response.async_set_error(
             intent.IntentResponseErrorCode.UNKNOWN,
             "There was an error communicating with Home Assistant.",
