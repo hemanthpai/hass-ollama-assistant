@@ -20,7 +20,7 @@ from homeassistant.helpers.selector import (
     SelectOptionDict
 )
 
-from custom_components.ollama_conversation.vllm_api import VllmApiClient
+from .vllm_api import VllmApiClient
 
 from .const import (
     DOMAIN, LOGGER,
