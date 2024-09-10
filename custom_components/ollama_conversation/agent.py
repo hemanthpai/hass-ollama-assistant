@@ -89,7 +89,7 @@ class OllamaAgent(conversation.AbstractConversationAgent):
                     assistant_tool_call_message(tool_call)
                 )
 
-                tool_call_response = self._handle_tool_call(tool_call)
+                tool_call_response = await self._handle_tool_call(tool_call)
 
                 messages.append(tool_call_response)
 
@@ -176,6 +176,8 @@ class OllamaAgent(conversation.AbstractConversationAgent):
 
         # Check if the tool_name is in any of the modules
         tool_function = globals().get(tool_name, None)
+        LOGGER.debug("Tool call: %s %s %s", tool_name,
+                     tool_args, tool_function)
 
         if tool_function is not None:
             result = await tool_function(self.hass, **tool_args)
