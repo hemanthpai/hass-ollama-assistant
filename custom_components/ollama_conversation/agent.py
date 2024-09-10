@@ -3,10 +3,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Literal
 
-from .tools import tools
+from .tools import TOOL_FUNCTIONS, tools
 from homeassistant.components import conversation
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import MATCH_ALL
@@ -37,7 +38,7 @@ from .exceptions import (
     ApiJsonError,
     ApiTimeoutError
 )
-from .helpers import assistant_message, assistant_tool_call_message, get_exposed_entities, system_message, tool_message, user_message
+from .helpers import assistant_message, get_exposed_entities, system_message, tool_message, user_message
 
 
 class OllamaAgent(conversation.AbstractConversationAgent):
@@ -85,15 +86,18 @@ class OllamaAgent(conversation.AbstractConversationAgent):
         # TODO: Error handling
         if response.tool_calls is not None and len(response.tool_calls) > 0:
             for tool_call in response.tool_calls:
-                messages.append(
-                    assistant_tool_call_message(tool_call)
-                )
-
                 tool_call_response = await self._handle_tool_call(tool_call)
 
                 messages.append(tool_call_response)
 
-                assistant_response = tool_call_response.get("content", "")
+                try:
+                    tool_call_followup_response = await self.query(messages)
+                except (ApiCommError, ApiJsonError, ApiTimeoutError) as err:
+                    return self._handle_api_error(err, user_input.language, conversation_id)
+                except HomeAssistantError as err:
+                    return self._handle_homeassistant_error(err, user_input.language, conversation_id)
+
+                assistant_response = tool_call_followup_response.message
         else:
             assistant_response = response.message
 
@@ -170,21 +174,21 @@ class OllamaAgent(conversation.AbstractConversationAgent):
         tool = tool_call.get("function", {})
         tool_name = tool.get("name", "")
         tool_args = tool.get("arguments", {})
+        tool_call_id = tool_call.get("id", "")
         # Ensure tool_args is a dictionary
         if isinstance(tool_args, str):
             tool_args = json.loads(tool_args)
 
         # Check if the tool_name is in any of the modules
-        tool_function = globals().get(tool_name, None)
-        LOGGER.debug("Tool call: %s %s %s", tool_name,
-                     tool_args, tool_function)
-
-        if tool_function is not None:
-            result = await tool_function(self.hass, **tool_args)
-            # TODO: Error handling
-            tool_response = tool_message(tool_name, result)
+        if tool_name in TOOL_FUNCTIONS:
+            tool_function = TOOL_FUNCTIONS[tool_name]
+            if asyncio.iscoroutinefunction(tool_function):
+                result = await tool_function(**tool_args)
+            else:
+                result = tool_function(**tool_args)
+            tool_response = tool_message(tool_call_id, tool_name, result)
         else:
-            tool_response = tool_message(tool_name, "Tool not found")
+            tool_response = tool_message("", tool_name, "Tool not found")
 
         return tool_response
 

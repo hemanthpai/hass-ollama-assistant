@@ -39,6 +39,7 @@ ROLE_KEY = "role"
 CONTENT_KEY = "content"
 NAME_KEY = "name"
 TOOL_CALLS_KEY = "tool_calls"
+TOOL_CALL_ID_KEY = "tool_call_id"
 
 ASSISTANT_ROLE = "assistant"
 USER_ROLE = "user"

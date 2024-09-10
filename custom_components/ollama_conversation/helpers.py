@@ -5,7 +5,7 @@ from homeassistant.components.homeassistant.exposed_entities import async_should
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry, area_registry
 
-from .const import ASSISTANT_ROLE, NAME_KEY, ROLE_KEY, SYSTEM_ROLE, CONTENT_KEY, TOOL_CALLS_KEY, TOOL_ROLE, USER_ROLE
+from .const import ASSISTANT_ROLE, NAME_KEY, ROLE_KEY, SYSTEM_ROLE, CONTENT_KEY, TOOL_CALL_ID_KEY, TOOL_CALLS_KEY, TOOL_ROLE, USER_ROLE
 
 
 def get_exposed_entities(hass: HomeAssistant) -> list[dict]:
@@ -77,12 +77,13 @@ def assistant_message(assistant_response: str) -> dict:
     }
 
 
-def tool_message(tool_name: str, tool_response: str) -> dict:
+def tool_message(tool_call_id: str, tool_name: str, tool_response: str) -> dict:
     """Generate a tool message."""
     return {
         ROLE_KEY: TOOL_ROLE,
         NAME_KEY: tool_name,
         CONTENT_KEY: tool_response,
+        TOOL_CALL_ID_KEY: tool_call_id,
     }
 
 

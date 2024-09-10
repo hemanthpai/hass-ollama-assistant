@@ -406,6 +406,11 @@ def hass_media_control(entity_id: str, action: str):
                  entity_id} with action: {action.value}")
 
 
+def hass_get_current_user():
+    """Get the current user."""
+    return "Hemanth Pai"
+
+
 tools = [
     get_json_schema(hass_turn_on),
     get_json_schema(hass_turn_off),
@@ -426,4 +431,28 @@ tools = [
     get_json_schema(hass_increase_speed),
     get_json_schema(hass_decrease_speed),
     get_json_schema(hass_media_control),
+    get_json_schema(hass_get_current_user),
 ]
+
+TOOL_FUNCTIONS = {
+    "hass_turn_on": hass_turn_on,
+    "hass_turn_off": hass_turn_off,
+    "hass_toggle": hass_toggle,
+    "hass_open": hass_open,
+    "hass_close": hass_close,
+    "hass_set_temperature": hass_set_temperature,
+    "hass_set_humidity": hass_set_humidity,
+    "hass_set_fan_mode": hass_set_fan_mode,
+    "hass_set_hvac_mode": hass_set_hvac_mode,
+    "hass_set_preset_mode": hass_set_preset_mode,
+    "hass_lock": hass_lock,
+    "hass_unlock": hass_unlock,
+    "hass_vacuum_start": hass_vacuum_start,
+    "hass_vacuum_stop": hass_vacuum_stop,
+    "hass_vacuum_pause": hass_vacuum_pause,
+    "hass_return_to_base": hass_return_to_base,
+    "hass_increase_speed": hass_increase_speed,
+    "hass_decrease_speed": hass_decrease_speed,
+    "hass_media_control": hass_media_control,
+    "hass_get_current_user": hass_get_current_user,
+}
