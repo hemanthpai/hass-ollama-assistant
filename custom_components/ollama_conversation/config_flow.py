@@ -102,7 +102,7 @@ class OllamaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         try:
             self.client = OpenAI(
-                base_url=cv.url_no_path(user_input[CONF_BASE_URL]),
+                base_url=cv.url(user_input[CONF_BASE_URL]),
                 timeout=user_input[CONF_TIMEOUT],
                 api_key="homeassistant",
             )
@@ -190,7 +190,7 @@ class OllamaOptionsFlow(config_entries.OptionsFlow):
 
         try:
             self.client = OpenAI(
-                base_url=cv.url_no_path(user_input[CONF_BASE_URL]),
+                base_url=cv.url(user_input[CONF_BASE_URL]),
                 timeout=user_input[CONF_TIMEOUT],
                 api_key="homeassistant",
             )
