@@ -85,20 +85,19 @@ class OllamaAgent(conversation.AbstractConversationAgent):
 
         # TODO: Error handling
         if response.tool_calls is not None and len(response.tool_calls) > 0:
-            # TODO: Consolidate results of multiple tool calls and only call LLM once
             for tool_call in response.tool_calls:
                 tool_call_response = await self._handle_tool_call(tool_call)
 
                 messages.append(tool_call_response)
 
-                try:
-                    tool_call_followup_response = await self.query(messages)
-                except (ApiCommError, ApiJsonError, ApiTimeoutError) as err:
-                    return self._handle_api_error(err, user_input.language, conversation_id)
-                except HomeAssistantError as err:
-                    return self._handle_homeassistant_error(err, user_input.language, conversation_id)
+            try:
+                tool_call_followup_response = await self.query(messages)
+            except (ApiCommError, ApiJsonError, ApiTimeoutError) as err:
+                return self._handle_api_error(err, user_input.language, conversation_id)
+            except HomeAssistantError as err:
+                return self._handle_homeassistant_error(err, user_input.language, conversation_id)
 
-                assistant_response = tool_call_followup_response.message
+            assistant_response = tool_call_followup_response.message
         else:
             assistant_response = response.message
 
