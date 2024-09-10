@@ -93,28 +93,24 @@ class OllamaAgent(conversation.AbstractConversationAgent):
         except HomeAssistantError as err:
             return self._handle_homeassistant_error(err, user_input.language, conversation_id)
 
-        assistant_response = ""
         # TODO: Error handling
-        if response.get("done_reason", "") == "stop":
-            assistant_response_message = response.get("message", {})
-            if "tool_calls" in assistant_response_message:
-                for tool_call in assistant_response_message.get("tool_calls", []):
-                    messages.append(
-                        assistant_tool_call_message(tool_call)
-                    )
+        assistant_response_message = response.get("message", {})
 
-                    tool_call_response = self._handle_tool_call(tool_call)
+        if "tool_calls" in assistant_response_message:
+            for tool_call in assistant_response_message.get("tool_calls", []):
+                messages.append(
+                    assistant_tool_call_message(tool_call)
+                )
 
-                    messages.append(tool_call_response)
+                tool_call_response = self._handle_tool_call(tool_call)
 
-                    assistant_response = tool_call_response.get("content", "")
+                messages.append(tool_call_response)
 
-                # TODO: Let the AI model know that the tool call has been handled
-            else:
-                assistant_response = assistant_response_message.get(CONTENT_KEY, "")
+                assistant_response = tool_call_response.get("content", "")
+
+            # TODO: Let the AI model know that the tool call has been handled
         else:
-            # TODO: Error handling
-            pass
+            assistant_response = assistant_response_message.get(CONTENT_KEY, "")
 
         LOGGER.debug("Assistant response: %s", assistant_response)
 
