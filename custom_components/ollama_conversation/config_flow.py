@@ -4,12 +4,12 @@ from __future__ import annotations
 import types
 from types import MappingProxyType
 from typing import Any
+from openai import OpenAI
 import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.selector import (
     NumberSelector,
     NumberSelectorConfig,
@@ -20,7 +20,6 @@ from homeassistant.helpers.selector import (
     SelectOptionDict
 )
 
-from .api import OllamaApiClient
 from .const import (
     DOMAIN, LOGGER,
     MENU_OPTIONS,
@@ -52,11 +51,6 @@ from .const import (
     DEFAULT_TOP_K,
     DEFAULT_TOP_P,
     DEFAULT_PROMPT_SYSTEM
-)
-from .exceptions import (
-    ApiClientError,
-    ApiCommError,
-    ApiTimeoutError
 )
 
 
@@ -107,23 +101,19 @@ class OllamaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         errors = {}
         try:
-            self.client = OllamaApiClient(
+            self.client = OpenAI(
                 base_url=cv.url_no_path(user_input[CONF_BASE_URL]),
                 timeout=user_input[CONF_TIMEOUT],
-                session=async_create_clientsession(self.hass),
+                api_key="homeassistant",
             )
-            response = await self.client.async_get_heartbeat()
+            response = await self.client.models.list()
             if not response:
-                raise vol.Invalid("Invalid Ollama server")
+                raise vol.Invalid("Invalid Open AI API server")
         except vol.Invalid:
             errors["base"] = "invalid_url"
-        except ApiTimeoutError:
-            errors["base"] = "timeout_connect"
-        except ApiCommError:
-            errors["base"] = "cannot_connect"
-        except ApiClientError as exception:
+        except Exception as exception:
             LOGGER.exception("Unexpected exception: %s", exception)
-            errors["base"] = "unknown"
+            errors["base"] = "cannot_connect"
         else:
             return self.async_create_entry(title=f"Ollama - {user_input[CONF_BASE_URL]}", data={
                 CONF_BASE_URL: user_input[CONF_BASE_URL]
@@ -196,18 +186,19 @@ class OllamaOptionsFlow(config_entries.OptionsFlow):
             self.options.update(user_input)
             return self.async_create_entry(title="", data=self.options)
 
+        models = []
+
         try:
-            client = OllamaApiClient(
-                base_url=cv.url_no_path(self.config_entry.data[CONF_BASE_URL]),
-                timeout=self.config_entry.options.get(
-                    CONF_TIMEOUT, DEFAULT_TIMEOUT),
-                session=async_create_clientsession(self.hass),
+            self.client = OpenAI(
+                base_url=cv.url_no_path(user_input[CONF_BASE_URL]),
+                timeout=user_input[CONF_TIMEOUT],
+                api_key="homeassistant",
             )
-            response = await client.async_get_models()
-            models = response["models"]
-        except ApiClientError as exception:
+            response = await self.client.models.list()
+            for model in response:
+                models.append(model.id)
+        except Exception as exception:
             LOGGER.exception("Unexpected exception: %s", exception)
-            models = []
 
         schema = ollama_schema_model_config(self.config_entry.options, [
                                             model["name"] for model in models])

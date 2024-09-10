@@ -9,7 +9,6 @@ from __future__ import annotations
 from openai import OpenAI
 
 from .agent import OpenAIAgent
-from .coordinator import OllamaDataUpdateCoordinator
 
 from homeassistant.components import conversation
 from homeassistant.config_entries import ConfigEntry
@@ -31,12 +30,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         api_key="homeassistant", #required but not used
     )
 
-    hass.data[DOMAIN][entry.entry_id] = coordinator = OllamaDataUpdateCoordinator(
-        hass,
-        client,
-    )
-    # https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
-    await coordinator.async_config_entry_first_refresh()
+    # hass.data[DOMAIN][entry.entry_id] = coordinator = OllamaDataUpdateCoordinator(
+    #     hass,
+    #     client,
+    # )
+    # # https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
+    # await coordinator.async_config_entry_first_refresh()
 
     # TODO: Add a heartbeat check?
 
