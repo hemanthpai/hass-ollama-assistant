@@ -49,7 +49,7 @@ from .exceptions import (
     ApiJsonError,
     ApiTimeoutError
 )
-from .helpers import assistant_tool_call_message, get_exposed_entities, system_message, tool_message, user_message
+from .helpers import assistant_message, assistant_tool_call_message, get_exposed_entities, system_message, tool_message, user_message
 
 class OllamaAgent(conversation.AbstractConversationAgent):
     """Ollama conversation agent."""
@@ -96,9 +96,9 @@ class OllamaAgent(conversation.AbstractConversationAgent):
         assistant_response = ""
         # TODO: Error handling
         if response.get("done_reason", "") == "stop":
-            assistant_message = response.get("message", {})
-            if "tool_calls" in assistant_message:
-                for tool_call in assistant_message.get("tool_calls", []):
+            assistant_response_message = response.get("message", {})
+            if "tool_calls" in assistant_response_message:
+                for tool_call in assistant_response_message.get("tool_calls", []):
                     messages.append(
                         assistant_tool_call_message(tool_call)
                     )
@@ -111,7 +111,7 @@ class OllamaAgent(conversation.AbstractConversationAgent):
 
                 # TODO: Let the AI model know that the tool call has been handled
             else:
-                assistant_response = assistant_message.get(CONTENT_KEY, "")
+                assistant_response = assistant_response_message.get(CONTENT_KEY, "")
         else:
             # TODO: Error handling
             pass
