@@ -83,7 +83,7 @@ class OllamaAgent(conversation.AbstractConversationAgent):
             return self._handle_homeassistant_error(err, user_input.language, conversation_id)
 
         # TODO: Error handling
-        if response.tool_calls.count > 0:
+        if response.tool_calls is not None and len(response.tool_calls) > 0:
             for tool_call in response.tool_calls:
                 messages.append(
                     assistant_tool_call_message(tool_call)

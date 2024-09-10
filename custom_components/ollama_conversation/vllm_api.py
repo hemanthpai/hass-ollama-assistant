@@ -34,37 +34,35 @@ class VllmApiClient:
 
     async def async_get_heartbeat(self) -> bool:
         """Get heartbeat from the API."""
-        response: VllmModelsApiResponse = await VllmApiResponseDecoder.decode(
-            self._api_wrapper(
-                method="get", url=f"{self._base_url}/v1/models", decode_json=False
-            ))
-        return response.models.count > 0
+        response = await self.async_get_models()
+        return len(response.models) > 0
 
     async def async_get_models(self) -> VllmModelsApiResponse:
         """Get models from the API."""
-        response: VllmModelsApiResponse = await VllmApiResponseDecoder.decode(
-            self._api_wrapper(
-                method="get", url=f"{self._base_url}/v1/models",
-                headers={
-                    "Content-type": "application/json; charset=UTF-8",
-                    "Authorization": "Bearer functionary"
-                },))
-        return response
+        response = await self._api_wrapper(
+            method="get", url=f"{self._base_url}/v1/models",
+            headers={
+                "Content-type": "application/json; charset=UTF-8",
+                "Authorization": "Bearer functionary"
+            },)
+        decoded_response: VllmModelsApiResponse = VllmApiResponseDecoder.decode(
+            response)
+        return decoded_response
 
     async def async_chat(self, data: dict | None = None,) -> VllmChatApiResponse:
         """Chat with the API."""
-        response: VllmChatApiResponse = await VllmApiResponseDecoder.decode(
-            self._api_wrapper(
-                method="post",
-                url=f"{self._base_url}/v1/chat/completions",
-                data=data,
-                headers={
-                    "Content-type": "application/json; charset=UTF-8",
-                    "Authorization": "Bearer functionary"
-                },)
-        )
+        response = await self._api_wrapper(
+            method="post",
+            url=f"{self._base_url}/v1/chat/completions",
+            data=data,
+            headers={
+                "Content-type": "application/json; charset=UTF-8",
+                "Authorization": "Bearer functionary"
+            },)
+        decoded_response: VllmChatApiResponse = VllmApiResponseDecoder.decode(
+            response)
 
-        return response
+        return decoded_response
 
     async def _api_wrapper(
         self,

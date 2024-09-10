@@ -60,7 +60,7 @@ class VllmApiResponseDecoder:
         """
         if VllmApiResponseDecoder._contains_model_object(response):
             models = [
-                VllmModel(model_id=model["id"]) for model in response["models"]
+                VllmModel(model_id=model["id"]) for model in response.get("data")
             ]
             return VllmModelsApiResponse(models=models)
         elif VllmApiResponseDecoder._contains_chat_completion_object(response):
@@ -70,7 +70,7 @@ class VllmApiResponseDecoder:
                 tool_calls=response["choices"][0]["message"]["tool_calls"],
             )
         else:
-            raise ValueError("Unknown response object")
+            raise ValueError("Unknown response object: %s", response)
 
     @staticmethod
     def _contains_model_object(response: dict) -> bool:
@@ -84,15 +84,11 @@ class VllmApiResponseDecoder:
 
         """
         if isinstance(response, dict):
-            if response.get("object") == "model":
-                return True
-            for _key, value in response.items():
-                if VllmApiResponseDecoder._contains_model_object(value):
-                    return True
-        elif isinstance(response, list):
-            for item in response:
-                if VllmApiResponseDecoder._contains_model_object(item):
-                    return True
+            if "data" in response:
+                data: list = response.get("data")
+                for model in data:
+                    if model.get("object") == "model":
+                        return True
         return False
 
     @staticmethod
@@ -109,11 +105,4 @@ class VllmApiResponseDecoder:
         if isinstance(response, dict):
             if response.get("object") == "chat.completion":
                 return True
-            for _key, value in response.items():
-                if VllmApiResponseDecoder._contains_chat_completion_object(value):
-                    return True
-        elif isinstance(response, list):
-            for item in response:
-                if VllmApiResponseDecoder._contains_chat_completion_object(item):
-                    return True
         return False
