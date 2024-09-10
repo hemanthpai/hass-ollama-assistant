@@ -30,6 +30,15 @@ class VllmChatApiResponse:
         self.tool_call_id = tool_call_id
         self.tool_calls = tool_calls
 
+    def __str__(self) -> str:
+        """Return the string representation of the object.
+
+        Returns:
+            str: The string representation of the object.
+
+        """
+        return f"VllmChatApiResponse(message={self.message}, tool_call_id={self.tool_call_id}, tool_calls={self.tool_calls})"
+
 
 class VllmModelsApiResponse:
     """Represents a response from the VLLM API."""
@@ -42,6 +51,15 @@ class VllmModelsApiResponse:
 
         """
         self.models = models
+
+    def __str__(self) -> str:
+        """Return the string representation of the object.
+
+        Returns:
+            str: The string representation of the object.
+
+        """
+        return f"VllmModelsApiResponse(models={self.models})"
 
 
 class VllmApiResponseDecoder:
