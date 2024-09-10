@@ -85,6 +85,7 @@ class OllamaAgent(conversation.AbstractConversationAgent):
 
         # TODO: Error handling
         if response.tool_calls is not None and len(response.tool_calls) > 0:
+            # TODO: Consolidate results of multiple tool calls and only call LLM once
             for tool_call in response.tool_calls:
                 tool_call_response = await self._handle_tool_call(tool_call)
 

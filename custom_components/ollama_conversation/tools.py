@@ -7,7 +7,7 @@ from .json_schema import get_json_schema
 
 from .const import LOGGER
 
-from .hass_provider import HassContext
+from .hass_provider import HassContextFactory
 
 
 class MediaAction(Enum):
@@ -69,7 +69,7 @@ async def hass_turn_on(entity_ids: list[str]):
 
     LOGGER.debug(f"Turning on entities: {', '.join(entity_ids)}")
 
-    hass = HassContext().hass
+    hass = HassContextFactory.get_instance()
     for entity_id in entity_ids:
         domain = entity_id.split(".")[0]
         # TODO: Add error handling for making sure a valid domain exists for the entity_id
@@ -103,7 +103,7 @@ async def hass_turn_off(entity_ids: list[str]):
 
     LOGGER.debug(f"Turning off entities: {', '.join(entity_ids)}")
 
-    hass = HassContext().hass
+    hass = HassContextFactory.get_instance()
     for entity_id in entity_ids:
         domain = entity_id.split(".")[0]
 

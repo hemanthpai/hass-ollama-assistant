@@ -1,19 +1,32 @@
-"""This module provides a HassContext class for singleton access to a HomeAssistant instance."""
+"""This module provides a HassContextFactory class for singleton access to a HomeAssistant instance."""
 
 from homeassistant.core import HomeAssistant
 
+from .const import LOGGER
 
-class HassContext:
-    """Singleton access to an instance of the HomeAssistant object."""
+
+class HassContextFactory:
+    """Factory class for obtaining a HassContext object."""
 
     _instance = None
 
-    def __init__(self, hass: HomeAssistant):
-        """Initialize the HassContext object."""
-        self.hass = hass
-
-    def __new__(cls, *args, **kwargs):
-        """Create a new instance of the class."""
+    @classmethod
+    def get_instance(cls) -> HomeAssistant:
+        """Get an instance of the HassContext object."""
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
+            raise ValueError(
+                "HassContextFactory hasn't been initialized with a HomeAssistant instance yet.")
+        else:
+            return cls._instance
+
+    @classmethod
+    def set_instance(cls, hass: HomeAssistant) -> None:
+        """Set the HomeAssistant instance for the factory."""
+        if cls._instance is not None:
+            LOGGER.warning(
+                "HassContextFactory already has a HomeAssistant instance set. Ignoring.")
+        elif not isinstance(hass, HomeAssistant):
+            raise ValueError(
+                "HassContextFactory.set_instance() requires a HomeAssistant instance.")
+        else:
+            cls._instance = hass
