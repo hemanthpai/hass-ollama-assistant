@@ -1,13 +1,12 @@
 """This module provides tools for interacting with Home Assistant entities."""
 
 from enum import Enum
-from homeassistant.const import ATTR_ENTITY_ID
 
 from .json_schema import get_json_schema
 
 from .const import LOGGER
 
-from .hass_provider import HassContextFactory
+from .hass import HomeAssistantService, HomeAssistantServiceResult
 
 
 class MediaAction(Enum):
@@ -53,10 +52,152 @@ class FanMode(Enum):
     OFF = "Off"
 
 
+SUPPORTED_DOMAINS = {
+    "hass_turn_on": ["light", "switch", "fan", "climate", "media_player", "automation", "script", "scene"],
+    "hass_turn_off": ["light", "switch", "fan", "climate", "media_player", "automation", "script"],
+    "hass_toggle": ["light", "switch", "fan", "climate", "media_player", "lock", "cover", "automation", "script"],
+    "hass_open": ["cover"],
+    "hass_close": ["cover"],
+    "hass_set_temperature": ["climate"],
+    "hass_set_humidity": ["climate"],
+    "hass_set_fan_mode": ["climate"],
+    "hass_set_hvac_mode": ["climate"],
+    "hass_set_preset_mode": ["climate"],
+    "hass_lock": ["lock"],
+    "hass_unlock": ["lock"],
+    "hass_vacuum_start": ["vacuum"],
+    "hass_vacuum_stop": ["vacuum"],
+    "hass_vacuum_pause": ["vacuum"],
+    "hass_return_to_base": ["vacuum"],
+    "hass_increase_speed": ["fan"],
+    "hass_decrease_speed": ["fan"],
+    "hass_media_control": ["media_player"],
+}
+
+
+class ToolCallResult:
+    """Result of a tool call."""
+
+    def __init__(self):
+        """Initialize the result."""
+        self.success = False
+        self.errored_entity_ids = []
+        self.missing_domain_entity_ids = []
+        self.incorrect_domain_entity_ids = []
+        self.domain_not_supported_entity_ids = []
+
+    def __str__(self):
+        """Return a string representation of the result."""
+        return_string = ""
+        if self.success:
+            return_string = "Success"
+        else:
+            return_string = "Failure"
+        if len(self.errored_entity_ids) > 0:
+            return_string += f", an error occurred for the following entity IDs: {
+                ', '.join(self.errored_entity_ids)}"
+        if len(self.missing_domain_entity_ids) > 0:
+            return_string += f", the following entity IDs are missing a valid domain: {
+                ', '.join(self.missing_domain_entity_ids)}"
+        if len(self.incorrect_domain_entity_ids) > 0:
+            return_string += f", the following entity IDs have an incorrect domain: {
+                ', '.join(self.incorrect_domain_entity_ids)}"
+        if len(self.domain_not_supported_entity_ids) > 0:
+            return_string += f", the following entity IDs have a domain that is not supported by this tool: {
+                ', '.join(self.domain_not_supported_entity_ids)}"
+
+        return return_string
+
+    def add_errored_entity_id(self, entity_id: list[str]):
+        """Add an entity ID that encountered an error."""
+        self.errored_entity_ids.extend(entity_id)
+
+    def add_missing_domain_entity_id(self, entity_id: list[str]):
+        """Add an entity ID that is missing a valid domain."""
+        self.missing_domain_entity_ids.extend(entity_id)
+
+    def add_incorrect_domain_entity_id(self, entity_id: list[str]):
+        """Add an entity ID that has an incorrect domain."""
+        self.incorrect_domain_entity_ids.extend(entity_id)
+
+    def add_domain_not_supported_entity_id(self, entity_id: list[str]):
+        """Add an entity ID that has a domain that is not supported by this tool."""
+        self.domain_not_supported_entity_ids.extend(entity_id)
+
+
+def validate_entity_ids(entity_ids: list[str], domain_entity_map: dict, tool_call_result: ToolCallResult, tool_name: str):
+    """Validate the entity IDs in the 'entity_ids' parameter.
+
+    Args:
+        entity_ids: The entity IDs to validate.
+        domain_entity_map: A dictionary to hold the mapping of entity IDs to their respective domains.
+        tool_call_result: An instance of ToolCallResult to update with the results of validation.
+        tool_name: The name of the tool making the validation call.
+
+    """
+    for entity_id in entity_ids:
+        if "." not in entity_id:
+            tool_call_result.add_missing_domain_entity_id([entity_id])
+            continue
+
+        domain = entity_id.split(".")[0]
+
+        if domain not in SUPPORTED_DOMAINS[tool_name]:
+            tool_call_result.add_domain_not_supported_entity_id([entity_id])
+            continue
+
+        if domain not in domain_entity_map:
+            domain_entity_map[domain] = []
+        domain_entity_map[domain].append(entity_id)
+
+
+def process_service_call_results(service_call_results: list[HomeAssistantServiceResult], tool_call_result: ToolCallResult):
+    """Process the results of service calls.
+
+    Args:
+        service_call_results: A list of HomeAssistantServiceResult objects to process.
+        tool_call_result: An instance of ToolCallResult to update with the results of the service calls.
+
+    """
+    for result in service_call_results:
+        if not result.success:
+            tool_call_result.add_errored_entity_id(result.error)
+
+    tool_call_result.success = all(
+        result.success for result in service_call_results)
+
+
+async def make_service_call(entity_ids: list[str], service: str, tool_name: str):
+    """Make a service call to Home Assistant.
+
+    Args:
+        entity_ids: The entity IDs to call the service on.
+        domain: The domain of the entities.
+        service: The service to call.
+        tool_name: The name of the tool making the service call.
+
+    """
+
+    domain_entity_map = {}
+    service_call_results: list[HomeAssistantServiceResult] = []
+    tool_call_result = ToolCallResult()
+
+    validate_entity_ids(entity_ids, domain_entity_map, tool_call_result)
+
+    for domain, ids in domain_entity_map.items():
+        result = await HomeAssistantService.async_call_service(
+            ids, domain, service)
+        service_call_results.append(result)
+
+    process_service_call_results(service_call_results, tool_call_result)
+
+    return str(tool_call_result)
+
+
 async def hass_turn_on(entity_ids: list[str]):
     """Turn on the entities specified in the 'entity_ids' parameter.
 
-    Supported entity types are: light, switch, fan, climate, media_player, automation, script, scene, and vacuum.
+    Supported entity types are: light, switch, fan, climate, media_player, automation, script, and scene.
 
     Args:
         entity_ids: The entity IDs of devices or entities that need to be turned on.
@@ -69,28 +210,15 @@ async def hass_turn_on(entity_ids: list[str]):
 
     LOGGER.debug(f"Turning on entities: {', '.join(entity_ids)}")
 
-    hass = HassContextFactory.get_instance()
-    for entity_id in entity_ids:
-        domain = entity_id.split(".")[0]
-        # TODO: Add error handling for making sure a valid domain exists for the entity_id
-        try:
-            await hass.services.async_call(
-                domain,
-                "turn_on",
-                {ATTR_ENTITY_ID: entity_id},
-                blocking=True,
-            )
-        except Exception as e:
-            LOGGER.error(f"Error while turning on entity {entity_id}: {e}")
-            return f"Error while turning on entity {entity_id}"
+    result = await make_service_call(entity_ids, "turn_on", "hass_turn_on")
 
-    return "Turned on the specified entities."
+    return result
 
 
 async def hass_turn_off(entity_ids: list[str]):
     """Turn off the entities specified in the 'entity_ids' parameter.
 
-    Supported entity types are: light, switch, fan, climate, media_player, automation, script, and vacuum.
+    Supported entity types are: light, switch, fan, climate, media_player, automation, and script.
 
     Args:
         entity_ids: The entity IDs of devices or entities that need to be turned off.
@@ -103,28 +231,15 @@ async def hass_turn_off(entity_ids: list[str]):
 
     LOGGER.debug(f"Turning off entities: {', '.join(entity_ids)}")
 
-    hass = HassContextFactory.get_instance()
-    for entity_id in entity_ids:
-        domain = entity_id.split(".")[0]
+    result = await make_service_call(entity_ids, "turn_off", "hass_turn_off")
 
-        try:
-            await hass.services.async_call(
-                domain,
-                "turn_off",
-                {ATTR_ENTITY_ID: entity_id},
-                blocking=True,
-            )
-        except Exception as e:
-            LOGGER.error(f"Error while turning off entity {entity_id}: {e}")
-            return f"Error while turning off entity {entity_id}"
-
-    return "Turned off the specified entities."
+    return result
 
 
-def hass_toggle(entity_ids: list[str]):
+async def hass_toggle(entity_ids: list[str]):
     """Toggle the entities specified in the 'entity_ids' parameter.
 
-    Supported entity types are: light, switch, fan, climate, media_player, lock, cover, automation, script, and vacuum.
+    Supported entity types are: light, switch, fan, climate, media_player, lock, cover, automation, and script.
 
     Args:
         entity_ids: The entity IDs of devices or entities that need to be toggled.
@@ -137,8 +252,12 @@ def hass_toggle(entity_ids: list[str]):
 
     LOGGER.debug(f"Toggling entities: {', '.join(entity_ids)}")
 
+    result = await make_service_call(entity_ids, "toggle", "hass_toggle")
 
-def hass_open(entity_ids: list[str]):
+    return result
+
+
+async def hass_open(entity_ids: list[str]):
     """Open the entities specified in the 'entity_ids' parameter.
 
     Only supported for the cover entity type, such as garage doors or blinds.
@@ -153,6 +272,10 @@ def hass_open(entity_ids: list[str]):
         raise ValueError("entity_ids must contain at least one entity ID")
 
     LOGGER.debug(f"Opening entities: {', '.join(entity_ids)}")
+
+    result = await make_service_call(entity_ids, "open_cover", "hass_open")
+
+    return result
 
 
 def hass_close(entity_ids: list[str]):
@@ -170,6 +293,54 @@ def hass_close(entity_ids: list[str]):
         raise ValueError("entity_ids must contain at least one entity ID")
 
     LOGGER.debug(f"Closing entities: {', '.join(entity_ids)}")
+
+    result = make_service_call(entity_ids, "close_cover", "hass_close")
+
+    return result
+
+
+def hass_lock(entity_ids: list[str]):
+    """Lock the entities specified in the 'entity_ids' parameter.
+
+    Only supported for lock entities.
+
+    Args:
+        entity_ids: The entity IDs of locks that need to be locked.
+
+    """
+
+    if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
+        raise ValueError("entity_ids must be a list of strings")
+    if len(entity_ids) < 1:
+        raise ValueError("entity_ids must contain at least one entity ID")
+
+    LOGGER.debug(f"Locking entities: {', '.join(entity_ids)}")
+
+    result = make_service_call(entity_ids, "lock", "hass_lock")
+
+    return result
+
+
+def hass_unlock(entity_ids: list[str]):
+    """Unlock the entities specified in the 'entity_ids' parameter.
+
+    Only supported for lock entities.
+
+    Args:
+        entity_ids: The entity IDs of locks that need to be unlocked.
+
+    """
+
+    if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
+        raise ValueError("entity_ids must be a list of strings")
+    if len(entity_ids) < 1:
+        raise ValueError("entity_ids must contain at least one entity ID")
+
+    LOGGER.debug(f"Unlocking entities: {', '.join(entity_ids)}")
+
+    result = make_service_call(entity_ids, "unlock", "hass_unlock")
+
+    return result
 
 
 def hass_set_temperature(entity_id: str, temperature: float):
@@ -254,42 +425,6 @@ def hass_set_preset_mode(entity_id: str, preset_mode: str):
 
     LOGGER.debug(f"Setting preset mode of entity {
                  entity_id} to {preset_mode.value}")
-
-
-def hass_lock(entity_ids: list[str]):
-    """Lock the entities specified in the 'entity_ids' parameter.
-
-    Only supported for lock entities.
-
-    Args:
-        entity_ids: The entity IDs of locks that need to be locked.
-
-    """
-
-    if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
-        raise ValueError("entity_ids must be a list of strings")
-    if len(entity_ids) < 1:
-        raise ValueError("entity_ids must contain at least one entity ID")
-
-    LOGGER.debug(f"Locking entities: {', '.join(entity_ids)}")
-
-
-def hass_unlock(entity_ids: list[str]):
-    """Unlock the entities specified in the 'entity_ids' parameter.
-
-    Only supported for lock entities.
-
-    Args:
-        entity_ids: The entity IDs of locks that need to be unlocked.
-
-    """
-
-    if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
-        raise ValueError("entity_ids must be a list of strings")
-    if len(entity_ids) < 1:
-        raise ValueError("entity_ids must contain at least one entity ID")
-
-    LOGGER.debug(f"Unlocking entities: {', '.join(entity_ids)}")
 
 
 def hass_vacuum_start(entity_ids: list[str]):
