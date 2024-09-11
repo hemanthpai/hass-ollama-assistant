@@ -24,16 +24,20 @@ class HomeAssistantService:
     """Service class for interacting with Home Assistant."""
 
     @staticmethod
-    async def async_call_service(entity_ids: list[str], domain: str, service: str) -> HomeAssistantServiceResult:
+    async def async_call_service(entity_ids: list[str], domain: str, service: str, data: dict = None) -> HomeAssistantServiceResult:
         """Call a service."""
 
         hass = HassContextFactory.get_instance()
+
+        service_data = {ATTR_ENTITY_ID: entity_ids}
+        if data is not None:
+            service_data.update(data)
 
         try:
             await hass.services.async_call(
                 domain,
                 service,
-                {ATTR_ENTITY_ID: entity_ids},
+                service_data,
                 blocking=True,
             )
 

@@ -12,14 +12,15 @@ from .hass import HomeAssistantService, HomeAssistantServiceResult
 class MediaAction(Enum):
     """An enumeration representing the actions that can be performed on a media player."""
 
-    PLAY = "play"
-    PAUSE = "pause"
-    STOP = "stop"
-    NEXT = "next"
-    PREVIOUS = "previous"
+    PLAY = "media_play"
+    PAUSE = "media_pause"
+    STOP = "media_stop"
+    NEXT = "media_next_track"
+    PREVIOUS = "media_previous_track"
     VOLUME_UP = "volume_up"
     VOLUME_DOWN = "volume_down"
     VOLUME_MUTE = "volume_mute"
+    SHUFFLE = "shuffle_set"
 
 
 class HVACMode(Enum):
@@ -52,6 +53,22 @@ class FanMode(Enum):
     OFF = "Off"
 
 
+class VacuumAction(Enum):
+    """An enumeration representing the actions that can be performed on a vacuum."""
+
+    START = "start"
+    STOP = "stop"
+    PAUSE = "pause"
+    RETURN_TO_BASE = "return_to_base"
+
+
+class FanAction(Enum):
+    """An enumeration representing the actions that can be performed on a fan."""
+
+    INCREASE_SPEED = "increase_speed"
+    DECREASE_SPEED = "decrease_speed"
+
+
 SUPPORTED_DOMAINS = {
     "hass_turn_on": ["light", "switch", "fan", "climate", "media_player", "automation", "script", "scene"],
     "hass_turn_off": ["light", "switch", "fan", "climate", "media_player", "automation", "script"],
@@ -65,12 +82,14 @@ SUPPORTED_DOMAINS = {
     "hass_set_preset_mode": ["climate"],
     "hass_lock": ["lock"],
     "hass_unlock": ["lock"],
-    "hass_vacuum_start": ["vacuum"],
-    "hass_vacuum_stop": ["vacuum"],
-    "hass_vacuum_pause": ["vacuum"],
-    "hass_return_to_base": ["vacuum"],
-    "hass_increase_speed": ["fan"],
-    "hass_decrease_speed": ["fan"],
+    "hass_vacuum_control": ["vacuum"],
+    "hass_fan_control": ["fan"],
+    # "hass_vacuum_start": ["vacuum"],
+    # "hass_vacuum_stop": ["vacuum"],
+    # "hass_vacuum_pause": ["vacuum"],
+    # "hass_return_to_base": ["vacuum"],
+    # "hass_increase_speed": ["fan"],
+    # "hass_decrease_speed": ["fan"],
     "hass_media_control": ["media_player"],
 }
 
@@ -230,6 +249,63 @@ async def make_service_call(entity_ids: list[str], service: str, tool_name: str)
     return str(tool_call_result)
 
 
+async def make_service_call_with_action(entity_id: str, action: str, tool_name: str):
+    """Make a service call to Home Assistant.
+
+    Args:
+        entity_id: The entity ID to call the service on.
+        domain: The domain of the entities.
+        action: The action to perform on the entities.
+        tool_name: The name of the tool making the service call.
+
+    """
+
+    tool_call_result = ToolCallResult()
+
+    if "." not in entity_id:
+        tool_call_result.add_missing_domain_entity_id([entity_id])
+    else:
+        domain = entity_id.split(".")[0]
+
+        if domain not in SUPPORTED_DOMAINS[tool_name]:
+            tool_call_result.add_domain_not_supported_entity_id([entity_id])
+        else:
+            result = await HomeAssistantService.async_call_service(
+                [entity_id], domain, action)
+            process_service_call_results([result], tool_call_result)
+
+    return str(tool_call_result)
+
+
+async def make_service_call_with_data(entity_id: str, service: str, data: dict, tool_name: str):
+    """Make a service call to Home Assistant.
+
+    Args:
+        entity_id: The entity ID to call the service on.
+        domain: The domain of the entities.
+        service: The service to call.
+        data: The data to pass to the service.
+        tool_name: The name of the tool making the service call.
+
+    """
+
+    tool_call_result = ToolCallResult()
+
+    if "." not in entity_id:
+        tool_call_result.add_missing_domain_entity_id([entity_id])
+    else:
+        domain = entity_id.split(".")[0]
+
+        if domain not in SUPPORTED_DOMAINS[tool_name]:
+            tool_call_result.add_domain_not_supported_entity_id([entity_id])
+        else:
+            result = await HomeAssistantService.async_call_service(
+                [entity_id], domain, service, data)
+            process_service_call_results([result], tool_call_result)
+
+    return str(tool_call_result)
+
+
 def suggest_tool_call(entity_ids: list[str] | str) -> ToolCallSuggestions:
     """Suggest a tool call based on the entity IDs provided in the 'entity_ids' parameter.
 
@@ -351,7 +427,7 @@ async def hass_open(entity_ids: list[str]):
     return result
 
 
-def hass_close(entity_ids: list[str]):
+async def hass_close(entity_ids: list[str]):
     """Close the entities specified in the 'entity_ids' parameter.
 
     Only supported for the cover entity type, such as garage doors or blinds.
@@ -367,12 +443,12 @@ def hass_close(entity_ids: list[str]):
 
     LOGGER.debug(f"Closing entities: {', '.join(entity_ids)}")
 
-    result = make_service_call(entity_ids, "close_cover", "hass_close")
+    result = await make_service_call(entity_ids, "close_cover", "hass_close")
 
     return result
 
 
-def hass_lock(entity_ids: list[str]):
+async def hass_lock(entity_ids: list[str]):
     """Lock the entities specified in the 'entity_ids' parameter.
 
     Only supported for lock entities.
@@ -389,12 +465,12 @@ def hass_lock(entity_ids: list[str]):
 
     LOGGER.debug(f"Locking entities: {', '.join(entity_ids)}")
 
-    result = make_service_call(entity_ids, "lock", "hass_lock")
+    result = await make_service_call(entity_ids, "lock", "hass_lock")
 
     return result
 
 
-def hass_unlock(entity_ids: list[str]):
+async def hass_unlock(entity_ids: list[str]):
     """Unlock the entities specified in the 'entity_ids' parameter.
 
     Only supported for lock entities.
@@ -411,12 +487,74 @@ def hass_unlock(entity_ids: list[str]):
 
     LOGGER.debug(f"Unlocking entities: {', '.join(entity_ids)}")
 
-    result = make_service_call(entity_ids, "unlock", "hass_unlock")
+    result = await make_service_call(entity_ids, "unlock", "hass_unlock")
 
     return result
 
 
-def hass_set_temperature(entity_id: str, temperature: float):
+async def hass_vacuum_control(entity_id: str, action: str):
+    """Control the vacuum entity specified in the 'entity_id' parameter with the action specified in the 'action' parameter.
+
+    Args:
+        entity_id: A string containing the entity ID of the vacuum device that needs to be controlled.
+        action: The action to perform on the vacuum (choices: ['start', 'stop', 'pause', 'return_to_base']).
+
+    """
+
+    if action not in [act.value for act in VacuumAction]:
+        raise ValueError(
+            "action must be one of the supported actions: 'start', 'stop', 'pause', 'return_to_base'")
+
+    LOGGER.debug(f"Controlling vacuum entity {
+                 entity_id} with action: {action}")
+
+    result = await make_service_call_with_action(entity_id, action, "hass_vacuum_control")
+
+    return result
+
+
+async def hass_media_control(entity_id: str, action: str):
+    """Control the media player entity specified in the 'entity_id' parameter with the action specified in the 'action' parameter.
+
+    Args:
+        entity_id: A string containing the entity ID of the media player device that needs to be controlled.
+        action: The action to perform on the media player (choices: ['media_play', 'media_pause', 'media_stop', 'media_next_track', 'media_previous_track', 'volume_up', 'volume_down', 'volume_mute', 'media_shuffle_set']).
+
+    """
+
+    if action not in [act.value for act in MediaAction]:
+        raise ValueError(
+            "action must be one of the supported actions: 'media_play', 'media_pause', 'media_stop', 'media_next_track', 'media_previous_track', 'volume_up', 'volume_down', 'volume_mute', 'media_shuffle_set'")
+
+    LOGGER.debug(f"Controlling media player {
+                 entity_id} with action: {action.value}")
+
+    result = await make_service_call_with_action(entity_id, action, "hass_media_control")
+
+    return result
+
+
+async def hass_fan_control(entity_id: str, action: str):
+    """Control the fan entity specified in the 'entity_id' parameter with the action specified in the 'action' parameter.
+
+    Args:
+        entity_id: A string containing the entity ID of the fan device that needs to be controlled.
+        action: The action to perform on the fan (choices: ['increase_speed', 'decrease_speed']).
+
+    """
+
+    if action not in [act.value for act in FanAction]:
+        raise ValueError(
+            "action must be one of the supported actions: 'increase_speed', 'decrease_speed'")
+
+    LOGGER.debug(f"Controlling fan {entity_id} with action: {action.value}")
+
+    result = await make_service_call_with_action(entity_id, action, "hass_fan_control")
+
+    return result
+
+
+async def hass_set_temperature(entity_id: str, temperature: float):
     """Set the temperature of the climate entity specified in the 'entity_id' parameter to the value specified in the 'temperature' parameter.
 
     Only supported for climate devices.
@@ -427,10 +565,25 @@ def hass_set_temperature(entity_id: str, temperature: float):
 
     """
 
+    if not isinstance(temperature, int | float):
+        raise TypeError("temperature must be a number")
+
+    if not isinstance(entity_id, str):
+        raise TypeError("entity_id must be a string")
+
+    if temperature < 0:
+        raise ValueError("temperature must be greater than or equal to 0")
+
     LOGGER.debug(f"Setting temperature of entity {entity_id} to {temperature}")
 
+    result = await make_service_call_with_data(entity_id, "set_temperature", {
+        "temperature": temperature
+    }, "hass_set_temperature")
 
-def hass_set_humidity(entity_id: str, humidity: float):
+    return result
+
+
+async def hass_set_humidity(entity_id: str, humidity: float):
     """Set the humidity of the entity specified in the 'entity_id' parameter to the value specified in the 'humidity' parameter.
 
     Only supported for climate devices.
@@ -441,10 +594,22 @@ def hass_set_humidity(entity_id: str, humidity: float):
 
     """
 
+    if not isinstance(humidity, int | float):
+        raise TypeError("temperature must be a number")
+
+    if not isinstance(entity_id, str):
+        raise TypeError("entity_id must be a string")
+
     LOGGER.debug(f"Setting humidity of entity {entity_id} to {humidity}")
 
+    result = await make_service_call_with_data(entity_id, "set_humidity", {
+        "humidity": humidity
+    }, "hass_set_humidity")
 
-def hass_set_fan_mode(entity_id: str, fan_mode: str):
+    return result
+
+
+async def hass_set_fan_mode(entity_id: str, fan_mode: str):
     """Set the fan mode of the entity specified in the 'entity_id' parameter to the value specified in the 'fan_mode' parameter.
 
     Only supported for climate devices.
@@ -461,8 +626,14 @@ def hass_set_fan_mode(entity_id: str, fan_mode: str):
 
     LOGGER.debug(f"Setting fan mode of entity {entity_id} to {fan_mode.value}")
 
+    result = await make_service_call_with_data(entity_id, "set_fan_mode", {
+        "fan_mode": fan_mode
+    }, "hass_set_fan_mode")
 
-def hass_set_hvac_mode(entity_id: str, hvac_mode: str):
+    return result
+
+
+async def hass_set_hvac_mode(entity_id: str, hvac_mode: str):
     """Set the HVAC mode of the entity specified in the 'entity_id' parameter to the value specified in the 'hvac_mode' parameter.
 
     Only supported for climate devices.
@@ -480,8 +651,14 @@ def hass_set_hvac_mode(entity_id: str, hvac_mode: str):
     LOGGER.debug(f"Setting HVAC mode of entity {
                  entity_id} to {hvac_mode.value}")
 
+    result = await make_service_call_with_data(entity_id, "set_hvac_mode", {
+        "hvac_mode": hvac_mode
+    }, "hass_set_hvac_mode")
 
-def hass_set_preset_mode(entity_id: str, preset_mode: str):
+    return result
+
+
+async def hass_set_preset_mode(entity_id: str, preset_mode: str):
     """Set the preset mode of the entity specified in the 'entity_id' parameter to the value specified in the 'preset_mode' parameter.
 
     Only supported for climate devices.
@@ -499,119 +676,11 @@ def hass_set_preset_mode(entity_id: str, preset_mode: str):
     LOGGER.debug(f"Setting preset mode of entity {
                  entity_id} to {preset_mode.value}")
 
+    result = await make_service_call_with_data(entity_id, "set_preset_mode", {
+        "preset_mode": preset_mode
+    }, "hass_set_preset_mode")
 
-def hass_vacuum_start(entity_ids: list[str]):
-    """Start the vacuum entities specified in the 'entity_ids' parameter.
-
-    Args:
-        entity_ids: The entity IDs of vacuum devices that need to be started.
-
-    """
-
-    if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
-        raise ValueError("entity_ids must be a list of strings")
-    if len(entity_ids) < 1:
-        raise ValueError("entity_ids must contain at least one entity ID")
-
-    LOGGER.debug(f"Starting vacuum entities: {', '.join(entity_ids)}")
-
-
-def hass_vacuum_stop(entity_ids: list[str]):
-    """Stop the vacuum entities specified in the 'entity_ids' parameter.
-
-    Args:
-        entity_ids: The entity IDs of vacuum devices that need to be stopped.
-
-    """
-
-    if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
-        raise ValueError("entity_ids must be a list of strings")
-    if len(entity_ids) < 1:
-        raise ValueError("entity_ids must contain at least one entity ID")
-
-    LOGGER.debug(f"Stopping vacuum entities: {', '.join(entity_ids)}")
-
-
-def hass_vacuum_pause(entity_ids: list[str]):
-    """Pause the vacuum entities specified in the 'entity_ids' parameter.
-
-    Args:
-        entity_ids: The entity IDs of vacuum devices that need to be paused.
-
-    """
-
-    if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
-        raise ValueError("entity_ids must be a list of strings")
-    if len(entity_ids) < 1:
-        raise ValueError("entity_ids must contain at least one entity ID")
-
-    LOGGER.debug(f"Pausing vacuum entities: {', '.join(entity_ids)}")
-
-
-def hass_return_to_base(entity_ids: list[str]):
-    """Return the vacuum entities specified in the 'entity_ids' parameter to their base station.
-
-    Args:
-        entity_ids: The entity IDs of vacuum devices that need to return to their base station.
-
-    """
-
-    if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
-        raise ValueError("entity_ids must be a list of strings")
-    if len(entity_ids) < 1:
-        raise ValueError("entity_ids must contain at least one entity ID")
-
-    LOGGER.debug(f"Returning vacuum entities to base station: {
-                 ', '.join(entity_ids)}")
-
-
-def hass_increase_speed(entity_ids: list[str]):
-    """Increase the speed of the fan entities specified in the 'entity_ids' parameter.
-
-    Args:
-        entity_ids: The entity IDs of fan devices that need to have their speed increased.
-
-    """
-
-    if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
-        raise ValueError("entity_ids must be a list of strings")
-    if len(entity_ids) < 1:
-        raise ValueError("entity_ids must contain at least one entity ID")
-
-    LOGGER.debug(f"Increasing speed of fan entities: {', '.join(entity_ids)}")
-
-
-def hass_decrease_speed(entity_ids: list[str]):
-    """Decrease the speed of the fan entities specified in the 'entity_ids' parameter.
-
-    Args:
-        entity_ids: The entity IDs of fan devices that need to have their speed decreased.
-
-    """
-
-    if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
-        raise ValueError("entity_ids must be a list of strings")
-    if len(entity_ids) < 1:
-        raise ValueError("entity_ids must contain at least one entity ID")
-
-    LOGGER.debug(f"Decreasing speed of fan entities: {', '.join(entity_ids)}")
-
-
-def hass_media_control(entity_id: str, action: str):
-    """Control the media player entity specified in the 'entity_id' parameter with the action specified in the 'action' parameter.
-
-    Args:
-        entity_id: A string containing the entity ID of the media player device that needs to be controlled.
-        action: The action to perform on the media player (choices: ['play', 'pause', 'stop', 'next', 'previous', 'volume_up', 'volume_down', 'volume_mute']).
-
-    """
-
-    if action not in [act.value for act in MediaAction]:
-        raise ValueError(
-            "action must be one of the supported actions: 'play', 'pause', 'stop', 'next', 'previous', 'volume_up', 'volume_down', 'volume_mute'")
-
-    LOGGER.debug(f"Controlling media player {
-                 entity_id} with action: {action.value}")
+    return result
 
 
 def hass_get_current_user():
@@ -632,12 +701,14 @@ tools = [
     get_json_schema(hass_set_preset_mode),
     get_json_schema(hass_lock),
     get_json_schema(hass_unlock),
-    get_json_schema(hass_vacuum_start),
-    get_json_schema(hass_vacuum_stop),
-    get_json_schema(hass_vacuum_pause),
-    get_json_schema(hass_return_to_base),
-    get_json_schema(hass_increase_speed),
-    get_json_schema(hass_decrease_speed),
+    get_json_schema(hass_vacuum_control),
+    get_json_schema(hass_fan_control),
+    # get_json_schema(hass_vacuum_start),
+    # get_json_schema(hass_vacuum_stop),
+    # get_json_schema(hass_vacuum_pause),
+    # get_json_schema(hass_return_to_base),
+    # get_json_schema(hass_increase_speed),
+    # get_json_schema(hass_decrease_speed),
     get_json_schema(hass_media_control),
     get_json_schema(hass_get_current_user),
 ]
@@ -655,12 +726,109 @@ TOOL_FUNCTIONS = {
     "hass_set_preset_mode": hass_set_preset_mode,
     "hass_lock": hass_lock,
     "hass_unlock": hass_unlock,
-    "hass_vacuum_start": hass_vacuum_start,
-    "hass_vacuum_stop": hass_vacuum_stop,
-    "hass_vacuum_pause": hass_vacuum_pause,
-    "hass_return_to_base": hass_return_to_base,
-    "hass_increase_speed": hass_increase_speed,
-    "hass_decrease_speed": hass_decrease_speed,
+    "hass_vacuum_control": hass_vacuum_control,
+    "hass_fan_control": hass_fan_control,
+    # "hass_vacuum_start": hass_vacuum_start,
+    # "hass_vacuum_stop": hass_vacuum_stop,
+    # "hass_vacuum_pause": hass_vacuum_pause,
+    # "hass_return_to_base": hass_return_to_base,
+    # "hass_increase_speed": hass_increase_speed,
+    # "hass_decrease_speed": hass_decrease_speed,
     "hass_media_control": hass_media_control,
     "hass_get_current_user": hass_get_current_user,
 }
+
+# def hass_vacuum_start(entity_ids: list[str]):
+#     """Start the vacuum entities specified in the 'entity_ids' parameter.
+
+#     Args:
+#         entity_ids: The entity IDs of vacuum devices that need to be started.
+
+#     """
+
+#     if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
+#         raise ValueError("entity_ids must be a list of strings")
+#     if len(entity_ids) < 1:
+#         raise ValueError("entity_ids must contain at least one entity ID")
+
+#     LOGGER.debug(f"Starting vacuum entities: {', '.join(entity_ids)}")
+
+
+# def hass_vacuum_stop(entity_ids: list[str]):
+#     """Stop the vacuum entities specified in the 'entity_ids' parameter.
+
+#     Args:
+#         entity_ids: The entity IDs of vacuum devices that need to be stopped.
+
+#     """
+
+#     if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
+#         raise ValueError("entity_ids must be a list of strings")
+#     if len(entity_ids) < 1:
+#         raise ValueError("entity_ids must contain at least one entity ID")
+
+#     LOGGER.debug(f"Stopping vacuum entities: {', '.join(entity_ids)}")
+
+
+# def hass_vacuum_pause(entity_ids: list[str]):
+#     """Pause the vacuum entities specified in the 'entity_ids' parameter.
+
+#     Args:
+#         entity_ids: The entity IDs of vacuum devices that need to be paused.
+
+#     """
+
+#     if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
+#         raise ValueError("entity_ids must be a list of strings")
+#     if len(entity_ids) < 1:
+#         raise ValueError("entity_ids must contain at least one entity ID")
+
+#     LOGGER.debug(f"Pausing vacuum entities: {', '.join(entity_ids)}")
+
+
+# def hass_return_to_base(entity_ids: list[str]):
+#     """Return the vacuum entities specified in the 'entity_ids' parameter to their base station.
+
+#     Args:
+#         entity_ids: The entity IDs of vacuum devices that need to return to their base station.
+
+#     """
+
+#     if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
+#         raise ValueError("entity_ids must be a list of strings")
+#     if len(entity_ids) < 1:
+#         raise ValueError("entity_ids must contain at least one entity ID")
+
+#     LOGGER.debug(f"Returning vacuum entities to base station: {
+#                  ', '.join(entity_ids)}")
+
+# def hass_increase_speed(entity_ids: list[str]):
+#     """Increase the speed of the fan entities specified in the 'entity_ids' parameter.
+
+#     Args:
+#         entity_ids: The entity IDs of fan devices that need to have their speed increased.
+
+#     """
+
+#     if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
+#         raise ValueError("entity_ids must be a list of strings")
+#     if len(entity_ids) < 1:
+#         raise ValueError("entity_ids must contain at least one entity ID")
+
+#     LOGGER.debug(f"Increasing speed of fan entities: {', '.join(entity_ids)}")
+
+
+# def hass_decrease_speed(entity_ids: list[str]):
+#     """Decrease the speed of the fan entities specified in the 'entity_ids' parameter.
+
+#     Args:
+#         entity_ids: The entity IDs of fan devices that need to have their speed decreased.
+
+#     """
+
+#     if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
+#         raise ValueError("entity_ids must be a list of strings")
+#     if len(entity_ids) < 1:
+#         raise ValueError("entity_ids must contain at least one entity ID")
+
+#     LOGGER.debug(f"Decreasing speed of fan entities: {', '.join(entity_ids)}")
