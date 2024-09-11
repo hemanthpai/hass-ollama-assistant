@@ -182,7 +182,8 @@ async def make_service_call(entity_ids: list[str], service: str, tool_name: str)
     service_call_results: list[HomeAssistantServiceResult] = []
     tool_call_result = ToolCallResult()
 
-    validate_entity_ids(entity_ids, domain_entity_map, tool_call_result)
+    validate_entity_ids(entity_ids, domain_entity_map,
+                        tool_call_result, tool_name)
 
     for domain, ids in domain_entity_map.items():
         result = await HomeAssistantService.async_call_service(
