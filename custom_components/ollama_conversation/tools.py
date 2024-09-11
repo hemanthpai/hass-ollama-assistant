@@ -576,11 +576,43 @@ async def hass_set_temperature(entity_id: str, temperature: float):
 
     LOGGER.debug(f"Setting temperature of entity {entity_id} to {temperature}")
 
-    result = await make_service_call_with_data(entity_id, "set_temperature", {
-        "temperature": temperature
-    }, "hass_set_temperature")
+    thermostat_attributes = await HomeAssistantService.async_get_thermostat_mode(
+        entity_id)
 
-    return result
+    if thermostat_attributes.hvac_mode == HVACMode.OFF.value:
+        LOGGER.debug(
+            f"{entity_id} is turned off. Turning it on and setting the temperature.")
+
+        result = await make_service_call([entity_id], "turn_on", "hass_turn_on")
+
+        if not result.success:
+            return str(result)
+        else:
+            thermostat_attributes = await HomeAssistantService.async_get_thermostat_mode(
+                entity_id)
+
+    if thermostat_attributes.hvac_mode == HVACMode.AUTO.value or thermostat_attributes.hvac_mode == HVACMode.HEAT_COOL.value:
+        LOGGER.debug(
+            f"{entity_id} is in auto mode. Setting the target high temperature and retaining the target low temperature.")
+
+        result = await make_service_call_with_data(entity_id, "set_temperature", {
+            "target_temp_low": thermostat_attributes.target_temperature_low,
+            "target_temp_high": temperature
+        }, "hass_set_temperature")
+
+        return result
+
+    if thermostat_attributes.hvac_mode == HVACMode.HEAT.value or thermostat_attributes.hvac_mode == HVACMode.COOL.value:
+        LOGGER.debug(
+            f"{entity_id} is in heat or cool mode. Setting the temperature.")
+
+        result = await make_service_call_with_data(entity_id, "set_temperature", {
+            "temperature": temperature
+        }, "hass_set_temperature")
+
+        return result
+
+    return "Something went wrong"
 
 
 async def hass_set_humidity(entity_id: str, humidity: float):

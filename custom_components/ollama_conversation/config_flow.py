@@ -109,11 +109,6 @@ class OllamaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         errors = {}
         try:
-            # self.client = OllamaApiClient(
-            #     base_url=cv.url_no_path(user_input[CONF_BASE_URL]),
-            #     timeout=user_input[CONF_TIMEOUT],
-            #     session=async_create_clientsession(self.hass),
-            # )
             self.client = VllmApiClient(
                 base_url=cv.url_no_path(user_input[CONF_BASE_URL]),
                 timeout=user_input[CONF_TIMEOUT],
@@ -204,12 +199,6 @@ class OllamaOptionsFlow(config_entries.OptionsFlow):
             return self.async_create_entry(title="", data=self.options)
 
         try:
-            # client = OllamaApiClient(
-            #     base_url=cv.url_no_path(self.config_entry.data[CONF_BASE_URL]),
-            #     timeout=self.config_entry.options.get(
-            #         CONF_TIMEOUT, DEFAULT_TIMEOUT),
-            #     session=async_create_clientsession(self.hass),
-            # )
             client = VllmApiClient(
                 base_url=cv.url_no_path(self.config_entry.data[CONF_BASE_URL]),
                 timeout=self.config_entry.options.get(
