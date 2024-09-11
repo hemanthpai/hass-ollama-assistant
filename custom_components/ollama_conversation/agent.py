@@ -32,6 +32,7 @@ from .const import (
     DEFAULT_TEMPERATURE,
     DEFAULT_TOP_P,
     DEFAULT_PROMPT_SYSTEM,
+    TOOL_DOES_NOT_EXIST,
 )
 from .exceptions import (
     ApiCommError,
@@ -168,7 +169,8 @@ class OllamaAgent(conversation.AbstractConversationAgent):
                 result = tool_function(**tool_args)
             tool_response = tool_message(tool_call_id, tool_name, result)
         else:
-            tool_response = tool_message("", tool_name, "Tool not found")
+            tool_response = tool_message(
+                tool_call_id, tool_name, TOOL_DOES_NOT_EXIST)
 
         return tool_response
 

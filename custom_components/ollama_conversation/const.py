@@ -46,6 +46,8 @@ USER_ROLE = "user"
 SYSTEM_ROLE = "system"
 TOOL_ROLE = "tool"
 
+TOOL_DOES_NOT_EXIST = "That tool does not exist."
+
 
 DEFAULT_PROMPT_SYSTEM = """You are 'Jarvis', a helpful Assistant that can control the devices in this house.
 The current time and date is {{ (as_timestamp(now()) | timestamp_custom("%I:%M %p on %A %B %d, %Y")) }}
