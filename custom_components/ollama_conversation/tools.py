@@ -4,7 +4,7 @@ from enum import Enum
 
 from .json_schema import get_json_schema
 
-from .const import LOGGER
+from .const import LOGGER, TOOL_DOES_NOT_EXIST
 
 from .hass import HomeAssistantService, HomeAssistantServiceResult
 
@@ -125,6 +125,41 @@ class ToolCallResult:
         self.domain_not_supported_entity_ids.extend(entity_id)
 
 
+class ToolCallSuggestions:
+    """Suggestions for tool calls based on entity IDs."""
+
+    def __init__(self):
+        """Initialize the suggestions."""
+        self.suggested_tool_calls = []
+        self.invalid_entity_ids = []
+
+    def __str__(self):
+        """Return a string representation of the suggestions."""
+
+        return_string = TOOL_DOES_NOT_EXIST
+
+        if len(self.suggested_tool_calls) > 0:
+            return_string += "\nSuggestions for tools based on the specified entity IDs:"
+
+            for tool_call in self.suggested_tool_calls:
+                return_string += f"\n{tool_call}"
+
+        if len(self.invalid_entity_ids) > 0:
+            return_string += f"\nAlso, the following entity IDs are invalid: {
+                ', '.join(self.invalid_entity_ids)}"
+            return_string += ". Entity IDs must start with a valid domain followed by a period."
+
+        return return_string
+
+    def add_suggested_tool_call(self, tool_call: str):
+        """Add a suggested tool call."""
+        self.suggested_tool_calls.append(tool_call)
+
+    def add_invalid_entity_id(self, entity_id: str):
+        """Add an entity ID that is invalid."""
+        self.invalid_entity_ids.extend(entity_id)
+
+
 def validate_entity_ids(entity_ids: list[str], domain_entity_map: dict, tool_call_result: ToolCallResult, tool_name: str):
     """Validate the entity IDs in the 'entity_ids' parameter.
 
@@ -193,6 +228,40 @@ async def make_service_call(entity_ids: list[str], service: str, tool_name: str)
     process_service_call_results(service_call_results, tool_call_result)
 
     return str(tool_call_result)
+
+
+def suggest_tool_call(entity_ids: list[str]) -> ToolCallSuggestions:
+    """Suggest a tool call based on the entity IDs provided in the 'entity_ids' parameter.
+
+    Args:
+        entity_ids: The entity IDs to suggest a tool call for.
+
+    """
+    if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
+        raise ValueError("entity_ids must be a list of strings")
+    if len(entity_ids) < 1:
+        raise ValueError("entity_ids must contain at least one entity ID")
+
+    tool_call_suggestions = ToolCallSuggestions()
+
+    domain_entity_map = {}
+    for entity_id in entity_ids:
+        if "." not in entity_id:
+            tool_call_suggestions.add_invalid_entity_id(entity_id)
+            continue
+
+        domain = entity_id.split(".")[0]
+
+        if domain not in domain_entity_map:
+            domain_entity_map[domain] = []
+        domain_entity_map[domain].append(entity_id)
+
+    for domain, _ids in domain_entity_map.items():
+        for tool_name, supported_domains in SUPPORTED_DOMAINS.items():
+            if domain in supported_domains:
+                tool_call_suggestions.add_suggested_tool_call(tool_name)
+
+    return tool_call_suggestions
 
 
 async def hass_turn_on(entity_ids: list[str]):

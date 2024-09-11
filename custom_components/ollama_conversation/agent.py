@@ -7,7 +7,7 @@ import asyncio
 import json
 from typing import Literal
 
-from .tools import TOOL_FUNCTIONS, tools
+from .tools import TOOL_FUNCTIONS, tools, suggest_tool_call
 from homeassistant.components import conversation
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import MATCH_ALL
@@ -32,7 +32,6 @@ from .const import (
     DEFAULT_TEMPERATURE,
     DEFAULT_TOP_P,
     DEFAULT_PROMPT_SYSTEM,
-    TOOL_DOES_NOT_EXIST,
 )
 from .exceptions import (
     ApiCommError,
@@ -170,7 +169,7 @@ class OllamaAgent(conversation.AbstractConversationAgent):
             tool_response = tool_message(tool_call_id, tool_name, result)
         else:
             tool_response = tool_message(
-                tool_call_id, tool_name, TOOL_DOES_NOT_EXIST)
+                tool_call_id, tool_name, suggest_tool_call(tool_args))
 
         return tool_response
 

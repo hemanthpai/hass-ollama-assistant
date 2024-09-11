@@ -46,7 +46,7 @@ USER_ROLE = "user"
 SYSTEM_ROLE = "system"
 TOOL_ROLE = "tool"
 
-TOOL_DOES_NOT_EXIST = "That tool does not exist."
+TOOL_DOES_NOT_EXIST = "Tool not found."
 
 
 DEFAULT_PROMPT_SYSTEM = """You are 'Jarvis', a helpful Assistant that can control the devices in this house.
