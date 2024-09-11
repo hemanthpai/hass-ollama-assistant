@@ -230,19 +230,22 @@ async def make_service_call(entity_ids: list[str], service: str, tool_name: str)
     return str(tool_call_result)
 
 
-def suggest_tool_call(entity_ids: list[str]) -> ToolCallSuggestions:
+def suggest_tool_call(entity_ids: list[str] | str) -> ToolCallSuggestions:
     """Suggest a tool call based on the entity IDs provided in the 'entity_ids' parameter.
 
     Args:
         entity_ids: The entity IDs to suggest a tool call for.
 
     """
-    if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
+    if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids) or not isinstance(entity_ids, str):
         raise ValueError("entity_ids must be a list of strings")
-    if len(entity_ids) < 1:
+    if isinstance(entity_ids, list) and len(entity_ids) < 1:
         raise ValueError("entity_ids must contain at least one entity ID")
 
     tool_call_suggestions = ToolCallSuggestions()
+
+    if isinstance(entity_ids, str):
+        entity_ids = [entity_ids]
 
     domain_entity_map = {}
     for entity_id in entity_ids:
