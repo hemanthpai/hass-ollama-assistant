@@ -76,36 +76,9 @@ class OllamaAgent(conversation.AbstractConversationAgent):
             user_message(user_input.text)
         )
 
-        try:
-            response = await self.query(messages)
-        except (ApiCommError, ApiJsonError, ApiTimeoutError) as err:
-            return self._handle_api_error(err, user_input.language, conversation_id)
-        except HomeAssistantError as err:
-            return self._handle_homeassistant_error(err, user_input.language, conversation_id)
-
-        # TODO: Error handling
-        if response.tool_calls is not None and len(response.tool_calls) > 0:
-            for tool_call in response.tool_calls:
-                tool_call_response = await self._handle_tool_call(tool_call)
-
-                messages.append(tool_call_response)
-
-            try:
-                tool_call_followup_response = await self.query(messages)
-            except (ApiCommError, ApiJsonError, ApiTimeoutError) as err:
-                return self._handle_api_error(err, user_input.language, conversation_id)
-            except HomeAssistantError as err:
-                return self._handle_homeassistant_error(err, user_input.language, conversation_id)
-
-            assistant_response = tool_call_followup_response.message
-        else:
-            assistant_response = response.message
+        assistant_response = await self._async_generate_response(messages, user_input.language, conversation_id)
 
         LOGGER.debug("Assistant response: %s", assistant_response)
-
-        messages.append(
-            assistant_message(assistant_response)
-        )
 
         self.history[conversation_id] = messages
 
@@ -124,24 +97,6 @@ class OllamaAgent(conversation.AbstractConversationAgent):
 
         LOGGER.debug("Prompt for %s: %s", model, messages)
 
-        # result = await self.client.async_chat({
-        #     "model": model,
-        #     "messages": messages,
-        #     "tools": tools,
-        #     "stream": False,
-        #     "options": {
-        #         "mirostat": int(self.entry.options.get(CONF_MIROSTAT_MODE, DEFAULT_MIROSTAT_MODE)),
-        #         "mirostat_eta": self.entry.options.get(CONF_MIROSTAT_ETA, DEFAULT_MIROSTAT_ETA),
-        #         "mirostat_tau": self.entry.options.get(CONF_MIROSTAT_TAU, DEFAULT_MIROSTAT_TAU),
-        #         "num_ctx": self.entry.options.get(CONF_CTX_SIZE, DEFAULT_CTX_SIZE),
-        #         "num_predict": self.entry.options.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS),
-        #         "temperature": self.entry.options.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE),
-        #         "repeat_penalty": self.entry.options.get(CONF_REPEAT_PENALTY, DEFAULT_REPEAT_PENALTY),
-        #         "top_k": self.entry.options.get(CONF_TOP_K, DEFAULT_TOP_K),
-        #         "top_p": self.entry.options.get(CONF_TOP_P, DEFAULT_TOP_P)
-        #     }
-        # })
-
         result = await self.client.async_chat({
             "model": model,
             "messages": messages,
@@ -154,6 +109,31 @@ class OllamaAgent(conversation.AbstractConversationAgent):
 
         LOGGER.debug("Result %s", result)
         return result
+
+    async def _async_generate_response(self, messages: list[dict], language: str, conversation_id: str) -> str:
+        """Generate a response from a list of messages."""
+        try:
+            response = await self.query(messages)
+        except (ApiCommError, ApiJsonError, ApiTimeoutError) as err:
+            return self._handle_api_error(err, language, conversation_id)
+        except HomeAssistantError as err:
+            return self._handle_homeassistant_error(err, language, conversation_id)
+
+        if response.tool_calls is not None and len(response.tool_calls) > 0:
+            for tool_call in response.tool_calls:
+                tool_call_response = await self._handle_tool_call(tool_call)
+
+                messages.append(tool_call_response)
+
+            assistant_response = await self._async_generate_response(messages, language, conversation_id)
+        else:
+            assistant_response = response.message
+
+            messages.append(
+                assistant_message(assistant_response)
+            )
+
+        return assistant_response
 
     def _async_generate_prompt(self) -> str:
         """Generate a prompt for the user."""
