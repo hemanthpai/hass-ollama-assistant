@@ -5,6 +5,8 @@ from .hass_provider import HassContextFactory
 
 from .const import LOGGER
 
+from .helpers import generate_available_time_slots_from_calendar_events
+
 from homeassistant.const import ATTR_ENTITY_ID
 
 
@@ -104,3 +106,68 @@ class HomeAssistantService:
             LOGGER.error(f"Error while getting events for calendar {
                 entity_ids}: {e}")
             return HomeAssistantServiceResult(success=False, error=[entity_ids])
+
+    @staticmethod
+    async def async_get_calendar_availability(entity_id: str, start_date: str, end_date: str) -> HomeAssistantServiceResult:
+        """Get availability from a calendar."""
+        hass = HassContextFactory.get_instance()
+
+        service_data = {ATTR_ENTITY_ID: entity_id}
+        data = {
+            "start_date_time": start_date,
+            "end_date_time": end_date
+        }
+        service_data.update(data)
+
+        try:
+            events = await hass.services.async_call(
+                "calendar",
+                "get_events",
+                service_data,
+                blocking=True,
+                return_response=True
+            )
+
+            LOGGER.debug(f"Events: {events}")
+
+            list_of_events = events.get(entity_id).get("events")
+
+            available_slots = generate_available_time_slots_from_calendar_events(
+                list_of_events, start_date, end_date)
+
+            return HomeAssistantServiceResult(success=True, data=json.dumps(available_slots))
+
+        except Exception as e:
+            LOGGER.error(f"Error while getting events for calendar {
+                entity_id}: {e}")
+            return HomeAssistantServiceResult(success=False, error=[entity_id])
+
+    @staticmethod
+    async def async_create_calendar_event(entity_id: str, start_date: str, end_date: str, summary: str) -> HomeAssistantServiceResult:
+        """Create a calendar event."""
+        hass = HassContextFactory.get_instance()
+
+        service_data = {ATTR_ENTITY_ID: entity_id}
+
+        data = {
+            "start_date_time": start_date,
+            "end_date_time": end_date,
+            "summary": summary
+        }
+
+        service_data.update(data)
+
+        try:
+            await hass.services.async_call(
+                "calendar",
+                "create_event",
+                service_data,
+                blocking=True
+            )
+
+            return HomeAssistantServiceResult(success=True)
+
+        except Exception as e:
+            LOGGER.error(f"Error while creating event for calendar {
+                entity_id}: {e}")
+            return HomeAssistantServiceResult(success=False, error=[entity_id])

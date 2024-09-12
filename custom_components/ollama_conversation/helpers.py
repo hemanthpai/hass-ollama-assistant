@@ -1,5 +1,6 @@
 """Helper functions for Ollama."""
 
+from datetime import datetime
 from homeassistant.components.conversation import DOMAIN as CONVERSATION_DOMAIN
 from homeassistant.components.homeassistant.exposed_entities import async_should_expose
 from homeassistant.core import HomeAssistant
@@ -93,3 +94,50 @@ def assistant_tool_call_message(tool_call: dict) -> dict:
         ROLE_KEY: ASSISTANT_ROLE,
         TOOL_CALLS_KEY: [tool_call],
     }
+
+
+def generate_available_time_slots_from_calendar_events(events: list[dict], start_date_time: str, end_date_time: str) -> dict:
+    """Generate available time slots from calendar events."""
+    # Convert event times to datetime objects and sort by start time
+    events = [
+        {
+            "start": datetime.fromisoformat(event["start"]),
+            "end": datetime.fromisoformat(event["end"]),
+            "summary": event["summary"]
+        }
+        for event in events
+    ]
+    events.sort(key=lambda x: x["start"])
+
+    # Convert start and end date times to datetime objects
+    start_dt = datetime.strptime(start_date_time, '%Y-%m-%d %H:%M:%S')
+    end_dt = datetime.strptime(end_date_time, '%Y-%m-%d %H:%M:%S')
+
+    # Generate available time slots
+    available_time_slots = []
+
+    current_time = start_dt
+
+    for event in events:
+        event_start_dt = event["start"]
+
+        if event_start_dt.tzinfo is not None:
+            # Convert input dates to the same timezone as the event
+            start_dt = start_dt.replace(tzinfo=event_start_dt.tzinfo)
+            end_dt = end_dt.replace(tzinfo=event_start_dt.tzinfo)
+            current_time = current_time.replace(tzinfo=event_start_dt.tzinfo)
+
+        if current_time < event["start"]:
+            available_time_slots.append({
+                "start": current_time.strftime('%Y-%m-%d %H:%M:%S'),
+                "end": event["start"].strftime('%Y-%m-%d %H:%M:%S')
+            })
+        current_time = max(current_time, event["end"])
+
+    if current_time < end_dt:
+        available_time_slots.append({
+            "start": current_time.strftime('%Y-%m-%d %H:%M:%S'),
+            "end": end_dt.strftime('%Y-%m-%d %H:%M:%S')
+        })
+
+    return {"open_slots": available_time_slots}

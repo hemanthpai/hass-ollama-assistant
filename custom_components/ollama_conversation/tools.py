@@ -87,6 +87,8 @@ SUPPORTED_DOMAINS = {
     "hass_fan_control": ["fan"],
     "hass_media_control": ["media_player"],
     "hass_get_agenda": ["calendar"],
+    "hass_get_calendar_availability": ["calendar"],
+    "hass_get_calendar_events": ["calendar"],
 }
 
 
@@ -336,6 +338,43 @@ def suggest_tool_call(entity_ids: list[str] | str) -> ToolCallSuggestions:
                 tool_call_suggestions.add_suggested_tool_call(tool_name)
 
     return tool_call_suggestions
+
+
+def validate_time_range(start_date: str, end_date: str):
+    """Validate the time range specified in the 'start_time' and 'end_time' parameters.
+
+    Args:
+        start_date: The start time of the time range.
+        end_date: The end time of the time range.
+
+    """
+    if not isinstance(start_date, str):
+        raise TypeError("start_date must be a string")
+
+    if not isinstance(end_date, str):
+        raise TypeError("end_date must be a string")
+
+    if start_date == "":
+        raise ValueError("start_date must not be empty")
+
+    if end_date == "":
+        raise ValueError("end_date must not be empty")
+
+    # Validate date format
+    try:
+        start_dt = datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S')
+    except ValueError:
+        raise ValueError(
+            "start_date must be in the format 'YYYY-MM-DD HH:MM:SS'")
+
+    try:
+        end_dt = datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S')
+    except ValueError:
+        raise ValueError(
+            "end_date must be in the format 'YYYY-MM-DD HH:MM:SS'")
+
+    if start_dt > end_dt:
+        raise ValueError("start_date must be before end_date")
 
 
 async def hass_turn_on(entity_ids: list[str]):
@@ -723,33 +762,10 @@ async def hass_get_agenda(entity_ids: list[str], start_date: str, end_date: str)
     if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
         raise ValueError("entity_ids must be a list of strings")
 
-    if not isinstance(start_date, str):
-        raise TypeError("start_date must be a string")
-
-    if not isinstance(end_date, str):
-        raise TypeError("end_date must be a string")
-
     if len(entity_ids) < 1:
         raise ValueError("entity_ids must contain at least one entity ID")
 
-    if start_date == "":
-        raise ValueError("start_date must not be empty")
-
-    if end_date == "":
-        raise ValueError("end_date must not be empty")
-
-        # Validate date format
-    try:
-        datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S')
-    except ValueError:
-        raise ValueError(
-            "start_date must be in the format 'YYYY-MM-DD HH:MM:SS'")
-
-    try:
-        datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S')
-    except ValueError:
-        raise ValueError(
-            "end_date must be in the format 'YYYY-MM-DD HH:MM:SS'")
+    validate_time_range(start_date, end_date)
 
     LOGGER.debug(f"Getting agenda for calendars: {', '.join(
         entity_ids)} between {start_date} and {end_date}")
@@ -767,6 +783,58 @@ async def hass_get_agenda(entity_ids: list[str], start_date: str, end_date: str)
         return result.data
     else:
         return str(result)
+
+
+async def hass_get_availability(entity_id: str, start_date: str, end_date: str):
+    """Find time slots that are open in the calendar with entity_id between the 'start_date' and 'end_date'.
+
+    Args:
+        entity_id: The entity IDs calendar devices to get events from.
+        start_date: The start date for the agenda, specified in the format 'YYYY-MM-DD HH:MM:SS'.
+        end_date: The end date for the agenda, specified in the format 'YYYY-MM-DD HH:MM:SS'.
+
+    """
+
+    if not isinstance(entity_id, str):
+        raise TypeError("entity_id must be a string")
+
+    validate_time_range(start_date, end_date)
+
+    LOGGER.debug(f"Getting available time slots for calendar: {
+                 entity_id} between {start_date} and {end_date}")
+
+    result = await HomeAssistantService.async_get_calendar_availability(
+        entity_id, start_date, end_date)
+
+    if result.success:
+        return result.data
+    else:
+        return str(result)
+
+
+async def hass_create_event(entity_id: str, start_date: str, end_date: str, summary: str):
+    """Create an event in the calendar with entity_id between the 'start_date' and 'end_date'.
+
+    Args:
+        entity_id: The entity IDs calendar devices to get events from.
+        start_date: The start date for the agenda, specified in the format 'YYYY-MM-DD HH:MM:SS'.
+        end_date: The end date for the agenda, specified in the format 'YYYY-MM-DD HH:MM:SS'.
+        summary: The summary of the event.
+
+    """
+
+    if not isinstance(entity_id, str):
+        raise TypeError("entity_id must be a string")
+
+    validate_time_range(start_date, end_date)
+
+    LOGGER.debug(f"Creating event for calendar: {
+                 entity_id} between {start_date} and {end_date}")
+
+    result = await HomeAssistantService.async_create_calendar_event(
+        entity_id, start_date, end_date, summary)
+
+    return str(result)
 
 
 def hass_get_current_user():
@@ -792,6 +860,8 @@ tools = [
     get_json_schema(hass_media_control),
     get_json_schema(hass_get_current_user),
     get_json_schema(hass_get_agenda),
+    get_json_schema(hass_get_availability),
+    get_json_schema(hass_create_event),
 ]
 
 TOOL_FUNCTIONS = {
@@ -812,4 +882,6 @@ TOOL_FUNCTIONS = {
     "hass_media_control": hass_media_control,
     "hass_get_current_user": hass_get_current_user,
     "hass_get_agenda": hass_get_agenda,
+    "hass_get_availability": hass_get_availability,
+    "hass_create_event": hass_create_event,
 }
