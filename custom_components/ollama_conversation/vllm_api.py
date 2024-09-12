@@ -17,6 +17,8 @@ from .exceptions import (
 
 from .response import VllmApiResponseDecoder, VllmChatApiResponse, VllmModelsApiResponse
 
+from .const import LOGGER
+
 
 class VllmApiClient:
     """API client for VLLM."""
@@ -59,6 +61,7 @@ class VllmApiClient:
                 "Content-type": "application/json; charset=UTF-8",
                 "Authorization": "Bearer functionary"
             },)
+        LOGGER.debug("API response: %s", response)
         decoded_response: VllmChatApiResponse = VllmApiResponseDecoder.decode(
             response)
 

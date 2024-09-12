@@ -1,5 +1,6 @@
 """This module provides tools for interacting with Home Assistant entities."""
 
+from datetime import datetime
 from enum import Enum
 
 from .json_schema import get_json_schema
@@ -84,13 +85,8 @@ SUPPORTED_DOMAINS = {
     "hass_unlock": ["lock"],
     "hass_vacuum_control": ["vacuum"],
     "hass_fan_control": ["fan"],
-    # "hass_vacuum_start": ["vacuum"],
-    # "hass_vacuum_stop": ["vacuum"],
-    # "hass_vacuum_pause": ["vacuum"],
-    # "hass_return_to_base": ["vacuum"],
-    # "hass_increase_speed": ["fan"],
-    # "hass_decrease_speed": ["fan"],
     "hass_media_control": ["media_player"],
+    "hass_get_agenda": ["calendar"],
 }
 
 
@@ -282,7 +278,6 @@ async def make_service_call_with_data(entity_id: str, service: str, data: dict, 
 
     Args:
         entity_id: The entity ID to call the service on.
-        domain: The domain of the entities.
         service: The service to call.
         data: The data to pass to the service.
         tool_name: The name of the tool making the service call.
@@ -715,6 +710,65 @@ async def hass_set_preset_mode(entity_id: str, preset_mode: str):
     return result
 
 
+async def hass_get_agenda(entity_ids: list[str], start_date: str, end_date: str):
+    """Get upcoming events on the calendars specified in the 'entity_ids' parameter between the 'start_date' and 'end_date'.
+
+    Args:
+        entity_ids: The entity IDs calendar devices to get events from.
+        start_date: The start date for the agenda, specified in the format 'YYYY-MM-DD HH:MM:SS'.
+        end_date: The end date for the agenda, specified in the format 'YYYY-MM-DD HH:MM:SS'.
+
+    """
+
+    if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
+        raise ValueError("entity_ids must be a list of strings")
+
+    if not isinstance(start_date, str):
+        raise TypeError("start_date must be a string")
+
+    if not isinstance(end_date, str):
+        raise TypeError("end_date must be a string")
+
+    if len(entity_ids) < 1:
+        raise ValueError("entity_ids must contain at least one entity ID")
+
+    if start_date == "":
+        raise ValueError("start_date must not be empty")
+
+    if end_date == "":
+        raise ValueError("end_date must not be empty")
+
+        # Validate date format
+    try:
+        datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S')
+    except ValueError:
+        raise ValueError(
+            "start_date must be in the format 'YYYY-MM-DD HH:MM:SS'")
+
+    try:
+        datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S')
+    except ValueError:
+        raise ValueError(
+            "end_date must be in the format 'YYYY-MM-DD HH:MM:SS'")
+
+    LOGGER.debug(f"Getting agenda for calendars: {', '.join(
+        entity_ids)} between {start_date} and {end_date}")
+
+    domain_entity_map = {}
+    tool_call_result = ToolCallResult()
+
+    validate_entity_ids(entity_ids, domain_entity_map,
+                        tool_call_result, "hass_get_agenda")
+
+    result = await HomeAssistantService.async_get_calendar_events(
+        entity_ids, start_date, end_date)
+
+    if result.success:
+        return result.data
+    else:
+        return str(result)
+
+
 def hass_get_current_user():
     """Get the current user."""
     return "Hemanth Pai"
@@ -735,14 +789,9 @@ tools = [
     get_json_schema(hass_unlock),
     get_json_schema(hass_vacuum_control),
     get_json_schema(hass_fan_control),
-    # get_json_schema(hass_vacuum_start),
-    # get_json_schema(hass_vacuum_stop),
-    # get_json_schema(hass_vacuum_pause),
-    # get_json_schema(hass_return_to_base),
-    # get_json_schema(hass_increase_speed),
-    # get_json_schema(hass_decrease_speed),
     get_json_schema(hass_media_control),
     get_json_schema(hass_get_current_user),
+    get_json_schema(hass_get_agenda),
 ]
 
 TOOL_FUNCTIONS = {
@@ -760,107 +809,7 @@ TOOL_FUNCTIONS = {
     "hass_unlock": hass_unlock,
     "hass_vacuum_control": hass_vacuum_control,
     "hass_fan_control": hass_fan_control,
-    # "hass_vacuum_start": hass_vacuum_start,
-    # "hass_vacuum_stop": hass_vacuum_stop,
-    # "hass_vacuum_pause": hass_vacuum_pause,
-    # "hass_return_to_base": hass_return_to_base,
-    # "hass_increase_speed": hass_increase_speed,
-    # "hass_decrease_speed": hass_decrease_speed,
     "hass_media_control": hass_media_control,
     "hass_get_current_user": hass_get_current_user,
+    "hass_get_agenda": hass_get_agenda,
 }
-
-# def hass_vacuum_start(entity_ids: list[str]):
-#     """Start the vacuum entities specified in the 'entity_ids' parameter.
-
-#     Args:
-#         entity_ids: The entity IDs of vacuum devices that need to be started.
-
-#     """
-
-#     if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
-#         raise ValueError("entity_ids must be a list of strings")
-#     if len(entity_ids) < 1:
-#         raise ValueError("entity_ids must contain at least one entity ID")
-
-#     LOGGER.debug(f"Starting vacuum entities: {', '.join(entity_ids)}")
-
-
-# def hass_vacuum_stop(entity_ids: list[str]):
-#     """Stop the vacuum entities specified in the 'entity_ids' parameter.
-
-#     Args:
-#         entity_ids: The entity IDs of vacuum devices that need to be stopped.
-
-#     """
-
-#     if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
-#         raise ValueError("entity_ids must be a list of strings")
-#     if len(entity_ids) < 1:
-#         raise ValueError("entity_ids must contain at least one entity ID")
-
-#     LOGGER.debug(f"Stopping vacuum entities: {', '.join(entity_ids)}")
-
-
-# def hass_vacuum_pause(entity_ids: list[str]):
-#     """Pause the vacuum entities specified in the 'entity_ids' parameter.
-
-#     Args:
-#         entity_ids: The entity IDs of vacuum devices that need to be paused.
-
-#     """
-
-#     if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
-#         raise ValueError("entity_ids must be a list of strings")
-#     if len(entity_ids) < 1:
-#         raise ValueError("entity_ids must contain at least one entity ID")
-
-#     LOGGER.debug(f"Pausing vacuum entities: {', '.join(entity_ids)}")
-
-
-# def hass_return_to_base(entity_ids: list[str]):
-#     """Return the vacuum entities specified in the 'entity_ids' parameter to their base station.
-
-#     Args:
-#         entity_ids: The entity IDs of vacuum devices that need to return to their base station.
-
-#     """
-
-#     if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
-#         raise ValueError("entity_ids must be a list of strings")
-#     if len(entity_ids) < 1:
-#         raise ValueError("entity_ids must contain at least one entity ID")
-
-#     LOGGER.debug(f"Returning vacuum entities to base station: {
-#                  ', '.join(entity_ids)}")
-
-# def hass_increase_speed(entity_ids: list[str]):
-#     """Increase the speed of the fan entities specified in the 'entity_ids' parameter.
-
-#     Args:
-#         entity_ids: The entity IDs of fan devices that need to have their speed increased.
-
-#     """
-
-#     if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
-#         raise ValueError("entity_ids must be a list of strings")
-#     if len(entity_ids) < 1:
-#         raise ValueError("entity_ids must contain at least one entity ID")
-
-#     LOGGER.debug(f"Increasing speed of fan entities: {', '.join(entity_ids)}")
-
-
-# def hass_decrease_speed(entity_ids: list[str]):
-#     """Decrease the speed of the fan entities specified in the 'entity_ids' parameter.
-
-#     Args:
-#         entity_ids: The entity IDs of fan devices that need to have their speed decreased.
-
-#     """
-
-#     if not isinstance(entity_ids, list) or not all(isinstance(id, str) for id in entity_ids):
-#         raise ValueError("entity_ids must be a list of strings")
-#     if len(entity_ids) < 1:
-#         raise ValueError("entity_ids must contain at least one entity ID")
-
-#     LOGGER.debug(f"Decreasing speed of fan entities: {', '.join(entity_ids)}")
